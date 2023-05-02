@@ -2,9 +2,9 @@ Welcome to the website of JuliaEPFL, a community of Julia language enthusiasts b
 
 # Events
 
-| When              | Where?                                             | What?                 | Resources                        |
-| ----------------- | -------------------------------------------------- | --------------------- | -------------------------------- |
-| 10.05.23 at 18:15 | BC410 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [notebook](notebooks/intro.html) |
+| When              | Where?                                             | What?                 | Register                                                     |Resources                        |
+| ----------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------ |-------------------------------- |
+| 10.05.23 at 18:15 | BC410 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [Here](https://memento.epfl.ch/event/introduction-to-julia/) |[notebook](notebooks/intro.html) |
 
 # Members
 
