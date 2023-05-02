@@ -1,14 +1,12 @@
-# JuliaEPFL
-
 Welcome to the website of JuliaEPFL, a community of Julia language enthusiasts based at École Polytechnique Fédérale de Lausanne!
 
-## Events
+# Events
 
-| When              | Where?                                             | What?                                         |
-| ----------------- | -------------------------------------------------- | --------------------------------------------- |
-| 10.05.23 at 18:15 | BC410 / [Zoom](https://epfl.zoom.us/j/68892870159) | [Introduction to Julia](notebooks/intro.html) |
+| When              | Where?                                             | What?                 | Resources                        |
+| ----------------- | -------------------------------------------------- | --------------------- | -------------------------------- |
+| 10.05.23 at 18:15 | BC410 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [notebook](notebooks/intro.html) |
 
-## Members
+# Members
 
 - [Michael Herbst](https://michael-herbst.com/)
 - [Guillaume Dalle](https://gdalle.github.io/)
