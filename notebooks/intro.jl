@@ -29,6 +29,7 @@ begin
 	using ImageShow
 	using ImageIO
 	using LinearAlgebra
+	using Libdl
 	using LogarithmicNumbers
 	using Measurements
 	using Pkg
@@ -36,6 +37,8 @@ begin
 	using PlutoUI
 	using PlutoTeachingTools
 	using PlutoTest
+	using Printf
+	using PyCall
 	using ShortCodes
 	using SparseArrays
 	using Symbolics
@@ -226,6 +229,16 @@ md"""
 Loops are fast, especially if you pay attention to memory allocation
 """
 
+# ╔═╡ d56ca76f-acfd-4396-a7a6-e521638df07b
+let
+	n = 100
+	A = rand(n, n)
+	B = rand(n, n)
+	C = zeros(n, n)
+	@btime $C .= $A .+ $B
+	@btime myadd!($C, $A, $B)
+end;
+
 # ╔═╡ 2f1f1a14-9d95-429e-837b-e09caef99b33
 md"""
 ## Abstraction
@@ -264,16 +277,6 @@ function myadd!(C, A, B)
 		C[i] = A[i] + B[i]
 	end
 end
-
-# ╔═╡ d56ca76f-acfd-4396-a7a6-e521638df07b
-let
-	n = 100
-	A = rand(n, n)
-	B = rand(n, n)
-	C = zeros(n, n)
-	@btime $C .= $A .+ $B
-	@btime myadd!($C, $A, $B)
-end;
 
 # ╔═╡ 88b5be8c-8b2c-4b04-9f91-c7fe5929ddc2
 Base.:/(a::Dual, b::Dual) = Dual(a.x / b.x, (b.x * a.δ - a.x * b.δ) / b.x^2)
@@ -577,6 +580,285 @@ md"""
 ## Speed
 """
 
+# ╔═╡ 1c5e704a-8761-4aa6-bd50-df6c4350443d
+md"""
+In the previous sections we discussed Julia's elaborate type system and dispatch mechanism allows the compiler to choose the best methods amongst all available implementations. Intuitively **more specialised code**, i.e. code that is allowed to exploit known structure, **is faster**. Now we explore how Julia is able to exploit this while retaining generic code ... thanks to multiple dispatch.
+"""
+
+# ╔═╡ 3ecca9bd-bc70-460a-a795-28c4a6275ab9
+md"""
+Let us first try to address the question *Is Julia fast?*
+
+To some extend this is a bit of a mismatching question, since one is able to write slow code in any language ... so let's try do address something else instead: *Can Julia be fast?*
+"""
+
+# ╔═╡ 413e8336-1a10-4ce8-8169-94d2b9d6e078
+md"""
+### A simple example: Sums
+"""
+
+# ╔═╡ 5753e3a3-2499-4b9c-9c69-a6d400ea64db
+function mysum(v)
+    result = zero(eltype(v))
+    for i in 1:length(v)
+        result += v[i]
+    end
+    result
+end;
+
+# ╔═╡ cba77bab-1d67-4557-8b95-9466f0be59ba
+begin
+	vlarge = randn(10^7)   # Large vector of numbers
+	times = Dict()         # Collection for timings
+end;
+
+# ╔═╡ 2d1e09dd-0348-4ac8-a663-0b799ec38162
+md"""
+First we do it in **plain C**.
+"""
+
+# ╔═╡ b0813754-1a15-4c46-993e-8882b9814a7d
+begin
+	# Compile some C code and call it from julia ...
+	code = """
+	#include <stddef.h>
+	double c_sum(size_t n, double *v) {
+   		double accu = 0.0;
+    	for (size_t i = 0; i < n; ++i) {
+        	accu += v[i];
+    	}
+    	return accu;
+	}
+	"""
+
+	# Compile to a shared library (with fast maths and machine-specific)
+	const Clib = tempname()
+	open(`gcc -fPIC -O3 -march=native -xc -shared -ffast-math -o $(Clib * "."  * Libdl.dlext) -`, "w") do f
+    	print(f, code) 
+	end
+
+	# define a Julia function that calls the C function:
+	c_sum(v::Array{Float64}) = ccall(("c_sum", Clib), Float64, (Csize_t, Ptr{Float64}), length(v), v)
+end
+
+# ╔═╡ 0d935958-7f45-49ba-b630-0334b027a0c1
+let
+	bench = @benchmark c_sum($vlarge)
+	times["C (naive)"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ 8c6804cf-5b9a-4793-8f2d-fdf35ad720ee
+md"""
+Now we try an explicitly and **fully vectorised C code**:
+"""
+
+# ╔═╡ 86c21556-ff39-4a2d-a5c6-251d74e60c5d
+begin
+	code_vectorised = """
+	#include <stddef.h>
+	#include <immintrin.h>
+	
+	double c_sum_vector(size_t n, double *v)
+	{
+	    size_t i;
+	    double result;
+	    double tmp[4] __attribute__ ((aligned(64)));
+	
+	    __m256d sums1 = _mm256_setzero_pd();
+	    __m256d sums2 = _mm256_setzero_pd();
+	    for ( i = 0; i + 7 < n; i += 8 )
+	    {
+	        sums1 = _mm256_add_pd( sums1, _mm256_loadu_pd(v+i  ) );
+	        sums2 = _mm256_add_pd( sums2, _mm256_loadu_pd(v+i+4) );
+	    }
+	    _mm256_store_pd( tmp, _mm256_add_pd(sums1, sums2) );
+	
+	    return tmp[0] + tmp[1] + tmp[2] + tmp[3]; 
+	}
+	"""
+	
+	# Compile to a shared library (with fast maths and machine-specific)
+	const Clib_vectorised = tempname()
+	open(`gcc -fPIC -O2 -march=native -xc -shared -ffast-math -o $(Clib_vectorised * "." * Libdl.dlext) -`, "w") do f
+	    print(f, code_vectorised) 
+	end
+	
+	# define a Julia function that calls the C function:
+	c_sum_vectorised(v::Array{Float64}) = ccall(("c_sum_vector", Clib_vectorised), Float64, (Csize_t, Ptr{Float64}), length(v), v)
+end
+
+# ╔═╡ acff670e-5011-4212-8f52-95c1b5477d5d
+let
+	bench = @benchmark c_sum_vectorised($vlarge)
+	times["C (vectorised)"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ 9b1329aa-4197-4949-bbb9-42a2275c7c2b
+md"""
+So how does the **Julia version** do?
+"""
+
+# ╔═╡ a86eb565-ff94-440f-8ef7-632a9dcd6c82
+let
+	bench = @benchmark mysum($vlarge)
+	times["Julia (naive)"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ 51e1c815-bc3b-4373-a236-c3e7df5d46de
+md"""
+A bit disappointing ... but unlike vectorised C we have not yet tried all tricks! Let's try an **optimised Julia version**.
+"""
+
+# ╔═╡ 36d82a73-b463-421f-aac3-7e2ce6905563
+function fastsum(v)
+    result = zero(eltype(v))
+    @simd for i in 1:length(v)    # @simd enforces vectorisation in the loop
+        @inbounds result += v[i]  # @inbounds suppresses bound checks
+    end
+    result
+end;
+
+# ╔═╡ eef56f3f-4a45-4e03-a173-9dcaa605ab75
+let
+	bench = @benchmark fastsum($vlarge)
+	times["Julia (simd)"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ 8c347867-f139-4c3a-b454-29d34f0a1be2
+md"""
+Notice, how this is still nicely readable code!
+"""
+
+# ╔═╡ b4245307-e080-4923-b540-b9b3288cfae4
+md"""
+So ... how does **python** do in this comparison ?
+"""
+
+# ╔═╡ 312b9532-0a7f-45d0-8e5d-44359c08bc3a
+numpysum(v) = pyimport("numpy").sum(v)
+
+# ╔═╡ 449130fa-6a73-42a7-93b9-9adbca17e37e
+let
+	bench = @benchmark numpysum($vlarge)
+	times["Numpy"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ d7aeb027-1642-4acc-8021-b3aad1463c29
+begin
+py"""
+def py_sum(A):
+    s = 0.0
+    for a in A:
+        s += a
+    return s
+"""
+	pysum = py"py_sum"
+end;
+
+# ╔═╡ 2f095034-9e3d-4f27-97f4-96cbeadbe681
+let
+	bench = @benchmark pysum($vlarge)
+	times["Python (naive)"] = minimum(bench.times) / 1e6
+	bench
+end
+
+# ╔═╡ 0f6c85be-7d32-4e0c-b085-a04227570a46
+md"""
+In summary:
+"""
+
+# ╔═╡ b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
+for k in sort(collect(keys(times)))
+	@printf "% 14s => %9.5f\n" k times[k]
+end
+
+# ╔═╡ f5a0e40c-4171-4e19-b50a-e464122012ce
+md"""
+### A more complicated example: Vandermonde matrices
+(modified from [Steven's Julia intro](https://web.mit.edu/18.06/www/Fall17/1806/julia/Julia-intro.pdf))
+
+$$\begin{align}
+\texttt{vander}\Big(\ \begin{bmatrix}\alpha_{1} \\ \alpha_{2} \\ \vdots \\  \alpha_{m}\end{bmatrix} \ \Big) \qquad = \qquad 
+\begin{bmatrix}1&\alpha _{1}&\alpha _{1}^{2}&\dots &\alpha _{1}^{n-1}\\1&\alpha _{2}&\alpha _{2}^{2}&\dots &\alpha _{2}^{n-1}\\1&\alpha _{3}&\alpha _{3}^{2}&\dots &\alpha _{3}^{n-1}\\\vdots &\vdots &\vdots &\ddots &\vdots \\1&\alpha _{m}&\alpha _{m}^{2}&\dots &\alpha _{m}^{n-1}\end{bmatrix}
+\end{align}$$
+"""
+
+# ╔═╡ 3b239309-049f-4667-afa6-1e6a8e017f37
+np = pyimport("numpy");
+
+# ╔═╡ da9b80e5-89ea-4bc8-85aa-d9a0a4d4dab4
+np.vander(1:5, increasing=true)
+
+# ╔═╡ 661dd8d7-e18a-4a4f-b2fd-6ee0a29087bc
+md"""
+[The source code for this function](https://github.com/numpy/numpy/blob/v1.16.1/numpy/lib/twodim_base.py#L475-L563) calls `np.multiply.accumulate` [which is implemented in C](https://github.com/numpy/numpy/blob/deea4983aedfa96905bbaee64e3d1de84144303f/numpy/core/src/umath/ufunc_object.c#L3678). However, this code doesn't actually perform the computation, it basically only checks types and stuff. The actual kernel is [implemented here](https://github.com/numpy/numpy/blob/deea4983aedfa96905bbaee64e3d1de84144303f/numpy/core/src/umath/loops.c.src#L1742), which is not even C code, but only a template that gets transformed to type-specific kernels. Still only a limited set of types `Float64`, `Float32`, and so forth are supported.
+
+
+
+Here is a type-generic Julia implementation:
+
+"""
+
+# ╔═╡ e12f6f12-335c-41a9-9255-c03a43564056
+function vander(x::AbstractVector{T}) where T
+    m = length(x)
+    V = Matrix{T}(undef, m, m)
+    for j = 1:m
+        V[j,1] = one(x[j])
+    end
+    for i= 2:m
+        for j = 1:m
+            V[j,i] = x[j] * V[j,i-1]
+            end
+        end
+    return V
+end;
+
+# ╔═╡ 78dd39c7-f2a3-42b0-874e-2f50e57ee219
+vander(1:5)
+
+# ╔═╡ f2809eb6-62d9-41f1-a790-3a29d59f5b41
+md"""
+#### Quick speed comparison
+"""
+
+# ╔═╡ 75a0daa1-a01d-47cc-8cf0-e3d6c75dd5be
+begin
+	ns = exp10.(range(1, 4, length=30))
+
+	tnp = Float64[]
+	tjl = Float64[]
+	for n in ns
+    	x = collect(1:n)
+    	push!(tnp, @belapsed np.vander($x) samples=3 evals=1)
+    	push!(tjl, @belapsed vander($x)    samples=3 evals=1)
+	end
+	plot(ns, tnp./tjl, m=:circle, xscale=:log10, yscale=:log10, ylims=[1, Inf], xlab="matrix size", ylab="NumPy time / Julia time", legend=:false)
+end
+
+# ╔═╡ 16f74b0b-e23c-4b01-9ac1-648552905e52
+md"""
+Notably the clean and concise Julia implementation is **consistently faster than numpy**'s C implementation (on my machine) and it still **works for arbitrary types**.
+"""
+
+# ╔═╡ 52a8e272-d802-4566-8e8a-c924267d2f76
+vander(Int32[4, 8, 16, 32])
+
+# ╔═╡ e7052194-795d-47fc-afa6-fdde6e2c8d48
+md"""
+This includes **non-numerical types** ... the only assumption is that the type induces a multiplicative group, i.e. has a `one` function to yield the identity element and an apropriate `*` defined.
+
+A rather unusual one is `String`, which works since `one(String) == ""`.
+"""
+
+# ╔═╡ b95d3f00-5155-46e4-aac3-4906849ce98f
+vander(["this", "is", "a", "test"])
+
 # ╔═╡ ddb62c34-eca9-4108-97c4-cacdf3a5de60
 md"""
 ## Composability
@@ -719,6 +1001,7 @@ ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 IndexFunArrays = "613c443e-d742-454e-bfc6-1d7f8dd76566"
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LogarithmicNumbers = "aa2f6b4e-9042-5d33-9679-40d3a6b85899"
 Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
@@ -727,6 +1010,8 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
@@ -746,6 +1031,7 @@ Plots = "~1.38.10"
 PlutoTeachingTools = "~0.2.9"
 PlutoTest = "~0.2.2"
 PlutoUI = "~0.7.50"
+PyCall = "~1.95.1"
 ShortCodes = "~0.3.5"
 Symbolics = "~5.2.0"
 Unitful = "~1.13.1"
@@ -757,7 +1043,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "88fdd35f3b95d63358300fca9f8b2ad3bad71f82"
+project_hash = "0abafdbe024d6a10f0d269a3aa33c5d4bd4a6c65"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -934,10 +1220,10 @@ uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.1"
 
 [[deps.ColorSchemes]]
-deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "Random", "SnoopPrecompile"]
-git-tree-sha1 = "aa3edc8f8dea6cbfa176ee12f7c2fc82f0608ed3"
+deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
+git-tree-sha1 = "be6ab11021cd29f0344d5c4357b163af05a48cba"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.20.0"
+version = "3.21.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -989,6 +1275,18 @@ git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
 uuid = "b152e2b5-7a66-4b01-a709-34e65c35f657"
 version = "0.1.3"
 
+[[deps.ConcurrentUtilities]]
+deps = ["Serialization", "Sockets"]
+git-tree-sha1 = "b306df2650947e9eb100ec125ff8c65ca2053d30"
+uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
+version = "2.1.1"
+
+[[deps.Conda]]
+deps = ["Downloads", "JSON", "VersionParsing"]
+git-tree-sha1 = "e32a90da027ca45d84678b826fffd3110bb3fc90"
+uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+version = "1.8.0"
+
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "89a9db8d28102b094992472d333674bd1a83ce2a"
@@ -1034,7 +1332,6 @@ version = "5.42.0"
 
 [[deps.DelimitedFiles]]
 deps = ["Mmap"]
-git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[deps.DensityInterface]]
@@ -1091,9 +1388,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "13027f188d26206b9e7b863036f87d2f2e7d013a"
+git-tree-sha1 = "180538ef4e3aa02b01413055a7a9e8b6047663e1"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.87"
+version = "0.25.88"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
@@ -1200,9 +1497,9 @@ version = "0.3.1"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
-git-tree-sha1 = "299dc33549f68299137e51e6d49a13b5b1da9673"
+git-tree-sha1 = "7be5f99f7d15578798f338f5433b6c432ea8037b"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.16.1"
+version = "1.16.0"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -1284,15 +1581,15 @@ version = "0.1.4"
 
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "0635807d28a496bb60bc15f465da0107fb29649c"
+git-tree-sha1 = "efaac003187ccc71ace6c755b197284cd4811bfe"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.72.0"
+version = "0.72.4"
 
 [[deps.GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "99e248f643b052a77d2766fe1a16fb32b661afd4"
+git-tree-sha1 = "4486ff47de4c18cb511a0da420efebb314556316"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.72.0+0"
+version = "0.72.4+0"
 
 [[deps.GenericSchur]]
 deps = ["LinearAlgebra", "Printf"]
@@ -1348,10 +1645,10 @@ uuid = "d5909c97-4eac-4ecc-a3dc-fdd0858a4120"
 version = "0.4.0"
 
 [[deps.HTTP]]
-deps = ["Base64", "CodecZlib", "Dates", "IniFile", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "37e4657cd56b11abe3d10cd4a1ec5fbdb4180263"
+deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
+git-tree-sha1 = "69182f9a2d6add3736b7a06ab6416aafdeec2196"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.7.4"
+version = "1.8.0"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -1452,11 +1749,6 @@ git-tree-sha1 = "5cd07aab533df5170988219191dfad0519391428"
 uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
 version = "0.1.3"
 
-[[deps.IniFile]]
-git-tree-sha1 = "f550e6e32074c939295eb5ea6de31849ac2c9625"
-uuid = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
-version = "0.5.1"
-
 [[deps.IntegerMathUtils]]
 git-tree-sha1 = "f366daebdfb079fd1fe4e3d560f99a0c892e15bc"
 uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
@@ -1555,9 +1847,9 @@ version = "0.9.23"
 
 [[deps.JumpProcesses]]
 deps = ["ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "FunctionWrappers", "Graphs", "LinearAlgebra", "Markdown", "PoissonRandom", "Random", "RandomNumbers", "RecursiveArrayTools", "Reexport", "SciMLBase", "StaticArrays", "TreeViews", "UnPack"]
-git-tree-sha1 = "740c685ba3d7f218663436b2152041563c19db6e"
+git-tree-sha1 = "50bd271af7f6cc23be7d24c8c4804809bb5d05ae"
 uuid = "ccbc3e58-028d-4f4c-8cd5-9ae44345cda5"
-version = "9.6.1"
+version = "9.6.3"
 
 [[deps.KLU]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
@@ -1613,9 +1905,9 @@ version = "0.4.6"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Printf", "Requires"]
-git-tree-sha1 = "2422f47b34d4b127720a18f86fa7b1aa2e141f29"
+git-tree-sha1 = "8c57307b5d9bb3be1ff2da469063628631d4d51e"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.15.18"
+version = "0.15.21"
 
 [[deps.LayoutPointers]]
 deps = ["ArrayInterface", "LinearAlgebra", "ManualMemory", "SIMDTypes", "Static", "StaticArrayInterface"]
@@ -1752,10 +2044,10 @@ uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "1.0.0"
 
 [[deps.LoopVectorization]]
-deps = ["ArrayInterface", "ArrayInterfaceCore", "CPUSummary", "ChainRulesCore", "CloseOpenIntervals", "DocStringExtensions", "ForwardDiff", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "SIMDTypes", "SLEEFPirates", "SnoopPrecompile", "SpecialFunctions", "Static", "StaticArrayInterface", "ThreadingUtilities", "UnPack", "VectorizationBase"]
-git-tree-sha1 = "defbfba8ddbccdc8ca3edb4a96a6d6fd3cd33ebd"
+deps = ["ArrayInterface", "ArrayInterfaceCore", "CPUSummary", "ChainRulesCore", "CloseOpenIntervals", "DocStringExtensions", "ForwardDiff", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "PrecompileTools", "SIMDTypes", "SLEEFPirates", "SpecialFunctions", "Static", "StaticArrayInterface", "ThreadingUtilities", "UnPack", "VectorizationBase"]
+git-tree-sha1 = "e7ce3cdc520da8135e73d7cb303e0617a19f582b"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.12.157"
+version = "0.12.158"
 
 [[deps.LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
@@ -1928,9 +2220,9 @@ version = "0.8.1+0"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
-git-tree-sha1 = "e9d68fe4b5f78f215aa2f0e6e6dc9e9911d33048"
+git-tree-sha1 = "7fb975217aea8f1bb360cf1dde70bad2530622d2"
 uuid = "4d8831e6-92b7-49fb-bdf8-b643e874388c"
-version = "1.3.4"
+version = "1.4.0"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2031,16 +2323,16 @@ uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
 version = "3.1.0"
 
 [[deps.PlotUtils]]
-deps = ["ColorSchemes", "Colors", "Dates", "Printf", "Random", "Reexport", "SnoopPrecompile", "Statistics"]
-git-tree-sha1 = "c95373e73290cf50a8a22c3375e4625ded5c5280"
+deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "Statistics"]
+git-tree-sha1 = "f92e1315dadf8c46561fb9396e525f7200cdc227"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "1.3.4"
+version = "1.3.5"
 
 [[deps.Plots]]
-deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "Preferences", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SnoopPrecompile", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "Unzip"]
-git-tree-sha1 = "5434b0ee344eaf2854de251f326df8720f6a7b55"
+deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Preferences", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "Unzip"]
+git-tree-sha1 = "6c7f47fd112001fc95ea1569c2757dffd9e81328"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.38.10"
+version = "1.38.11"
 
 [[deps.PlutoHooks]]
 deps = ["InteractiveUtils", "Markdown", "UUIDs"]
@@ -2056,9 +2348,9 @@ version = "0.1.6"
 
 [[deps.PlutoTeachingTools]]
 deps = ["Downloads", "HypertextLiteral", "LaTeXStrings", "Latexify", "Markdown", "PlutoLinks", "PlutoUI", "Random"]
-git-tree-sha1 = "8c8b07296990c12ac3a9eb9f74cd80f7e81c16b7"
+git-tree-sha1 = "88222661708df26242d0bfb9237d023557d11718"
 uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
-version = "0.2.9"
+version = "0.2.11"
 
 [[deps.PlutoTest]]
 deps = ["HypertextLiteral", "InteractiveUtils", "Markdown", "Test"]
@@ -2068,9 +2360,9 @@ version = "0.2.2"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "5bb5129fdd62a2bbbe17c2756932259acf467386"
+git-tree-sha1 = "b478a748be27bd2f2c73a7690da219d0844db305"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.50"
+version = "0.7.51"
 
 [[deps.PoissonRandom]]
 deps = ["Random"]
@@ -2102,6 +2394,12 @@ git-tree-sha1 = "f739b1b3cc7b9949af3b35089931f2b58c289163"
 uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 version = "0.4.12"
 
+[[deps.PrecompileTools]]
+deps = ["Preferences"]
+git-tree-sha1 = "2e47054ffe7d0a8872e977c0d09eb4b3d162ebde"
+uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+version = "1.0.2"
+
 [[deps.Preferences]]
 deps = ["TOML"]
 git-tree-sha1 = "47e5f437cc0e7ef2ce8406ce1e7e24d44915f88d"
@@ -2127,6 +2425,12 @@ deps = ["Distributed", "Printf"]
 git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.7.2"
+
+[[deps.PyCall]]
+deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
+git-tree-sha1 = "62f417f6ad727987c755549e9cd88c46578da562"
+uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+version = "1.95.1"
 
 [[deps.QOI]]
 deps = ["ColorTypes", "FileIO", "FixedPointNumbers"]
@@ -2156,9 +2460,9 @@ uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.Random123]]
 deps = ["Random", "RandomNumbers"]
-git-tree-sha1 = "7a1a306b72cfa60634f03a911405f4e64d1b718b"
+git-tree-sha1 = "552f30e847641591ba3f39fd1bed559b9deb0ef3"
 uuid = "74087812-796a-5b5d-8853-05524746bad3"
-version = "1.6.0"
+version = "1.6.1"
 
 [[deps.RandomExtensions]]
 deps = ["Random", "SparseArrays"]
@@ -2178,22 +2482,22 @@ uuid = "b3c3ace0-ae52-54e7-9d0b-2c1406fd6b9d"
 version = "0.3.2"
 
 [[deps.RecipesBase]]
-deps = ["SnoopPrecompile"]
-git-tree-sha1 = "261dddd3b862bd2c940cf6ca4d1c8fe593e457c8"
+deps = ["PrecompileTools"]
+git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.3.3"
+version = "1.3.4"
 
 [[deps.RecipesPipeline]]
-deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase", "SnoopPrecompile"]
-git-tree-sha1 = "e974477be88cb5e3040009f3767611bc6357846f"
+deps = ["Dates", "NaNMath", "PlotUtils", "PrecompileTools", "RecipesBase"]
+git-tree-sha1 = "45cf9fd0ca5839d06ef333c8201714e888486342"
 uuid = "01d81517-befc-4cb6-b9ec-a95719d0359c"
-version = "0.6.11"
+version = "0.6.12"
 
 [[deps.RecursiveArrayTools]]
 deps = ["Adapt", "ArrayInterface", "DocStringExtensions", "GPUArraysCore", "IteratorInterfaceExtensions", "LinearAlgebra", "RecipesBase", "Requires", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-git-tree-sha1 = "140cddd2c457e4ebb0cdc7c2fd14a7fbfbdf206e"
+git-tree-sha1 = "68078e9fa9130a6a768815c48002d0921a232c11"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "2.38.3"
+version = "2.38.4"
 
 [[deps.RecursiveFactorization]]
 deps = ["LinearAlgebra", "LoopVectorization", "Polyester", "SnoopPrecompile", "StrideArraysCore", "TriangularSolve"]
@@ -2401,15 +2705,15 @@ version = "0.8.6"
 
 [[deps.StaticArrayInterface]]
 deps = ["ArrayInterface", "Compat", "IfElse", "LinearAlgebra", "Requires", "SnoopPrecompile", "SparseArrays", "Static", "SuiteSparse"]
-git-tree-sha1 = "59d01f440c78ad9046680688d6ad51812953a4a9"
+git-tree-sha1 = "33040351d2403b84afce74dae2e22d3f5b18edcb"
 uuid = "0d7ed370-da01-4f52-bd93-41d350b8b718"
-version = "1.3.1"
+version = "1.4.0"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore", "Statistics"]
-git-tree-sha1 = "63e84b7fdf5021026d0f17f76af7c57772313d99"
+git-tree-sha1 = "c262c8e978048c2b095be1672c9bee55b4619521"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.5.21"
+version = "1.5.24"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "6b7ba252635a5eff6a0b0664a41ee140a1c9e72a"
@@ -2452,9 +2756,9 @@ version = "6.60.0"
 
 [[deps.StrideArraysCore]]
 deps = ["ArrayInterface", "CloseOpenIntervals", "IfElse", "LayoutPointers", "ManualMemory", "SIMDTypes", "Static", "StaticArrayInterface", "ThreadingUtilities"]
-git-tree-sha1 = "e2d60a1cd52d0583471f83bd5d2dcefa626d271f"
+git-tree-sha1 = "b3e9c174a9df77ed7b66fc0aa605def3351a0653"
 uuid = "7792a7ef-975c-4747-a70f-980b88e8d1da"
-version = "0.4.10"
+version = "0.4.13"
 
 [[deps.StructTypes]]
 deps = ["Dates", "UUIDs"]
@@ -2547,15 +2851,15 @@ version = "0.6.4"
 
 [[deps.TimerOutputs]]
 deps = ["ExprTools", "Printf"]
-git-tree-sha1 = "f2fd3f288dfc6f507b0c3a2eb3bac009251e548b"
+git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.22"
+version = "0.5.23"
 
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]
-git-tree-sha1 = "0b829474fed270a4b0ab07117dce9b9a2fa7581a"
+git-tree-sha1 = "9a6ae7ed916312b41236fcef7e0af564ef934769"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.9.12"
+version = "0.9.13"
 
 [[deps.TreeViews]]
 deps = ["Test"]
@@ -2625,6 +2929,11 @@ deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "IfElse", "LayoutPoin
 git-tree-sha1 = "b182207d4af54ac64cbc71797765068fdeff475d"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.21.64"
+
+[[deps.VersionParsing]]
+git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
+uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
+version = "1.3.0"
 
 [[deps.VertexSafeGraphs]]
 deps = ["Graphs"]
@@ -2985,6 +3294,42 @@ version = "1.4.1+0"
 # ╠═1dcc351e-0056-4372-bd4f-e8e7d15227de
 # ╟─31ce0ecf-69ea-41c6-970f-7117d8399ad2
 # ╟─d7987ebe-ad03-4b64-b975-572c5f5cbcdb
+# ╟─1c5e704a-8761-4aa6-bd50-df6c4350443d
+# ╟─3ecca9bd-bc70-460a-a795-28c4a6275ab9
+# ╟─413e8336-1a10-4ce8-8169-94d2b9d6e078
+# ╠═5753e3a3-2499-4b9c-9c69-a6d400ea64db
+# ╠═cba77bab-1d67-4557-8b95-9466f0be59ba
+# ╟─2d1e09dd-0348-4ac8-a663-0b799ec38162
+# ╠═b0813754-1a15-4c46-993e-8882b9814a7d
+# ╠═0d935958-7f45-49ba-b630-0334b027a0c1
+# ╟─8c6804cf-5b9a-4793-8f2d-fdf35ad720ee
+# ╠═86c21556-ff39-4a2d-a5c6-251d74e60c5d
+# ╠═acff670e-5011-4212-8f52-95c1b5477d5d
+# ╟─9b1329aa-4197-4949-bbb9-42a2275c7c2b
+# ╠═a86eb565-ff94-440f-8ef7-632a9dcd6c82
+# ╟─51e1c815-bc3b-4373-a236-c3e7df5d46de
+# ╠═36d82a73-b463-421f-aac3-7e2ce6905563
+# ╠═eef56f3f-4a45-4e03-a173-9dcaa605ab75
+# ╟─8c347867-f139-4c3a-b454-29d34f0a1be2
+# ╟─b4245307-e080-4923-b540-b9b3288cfae4
+# ╠═312b9532-0a7f-45d0-8e5d-44359c08bc3a
+# ╠═449130fa-6a73-42a7-93b9-9adbca17e37e
+# ╠═d7aeb027-1642-4acc-8021-b3aad1463c29
+# ╠═2f095034-9e3d-4f27-97f4-96cbeadbe681
+# ╟─0f6c85be-7d32-4e0c-b085-a04227570a46
+# ╠═b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
+# ╟─f5a0e40c-4171-4e19-b50a-e464122012ce
+# ╠═3b239309-049f-4667-afa6-1e6a8e017f37
+# ╠═da9b80e5-89ea-4bc8-85aa-d9a0a4d4dab4
+# ╟─661dd8d7-e18a-4a4f-b2fd-6ee0a29087bc
+# ╠═e12f6f12-335c-41a9-9255-c03a43564056
+# ╠═78dd39c7-f2a3-42b0-874e-2f50e57ee219
+# ╟─f2809eb6-62d9-41f1-a790-3a29d59f5b41
+# ╠═75a0daa1-a01d-47cc-8cf0-e3d6c75dd5be
+# ╟─16f74b0b-e23c-4b01-9ac1-648552905e52
+# ╠═52a8e272-d802-4566-8e8a-c924267d2f76
+# ╟─e7052194-795d-47fc-afa6-fdde6e2c8d48
+# ╠═b95d3f00-5155-46e4-aac3-4906849ce98f
 # ╟─ddb62c34-eca9-4108-97c4-cacdf3a5de60
 # ╟─4da69ddd-cff0-4aff-abb7-4e4d5d2bb04a
 # ╠═8f9d1a94-14b8-4566-a763-eefc7cb5c234
