@@ -936,7 +936,7 @@ simshow(conv(img, kernel))
 md""" ## Solving the inverse problem
 [DeconvOptim.jl](https://github.com/roflmaostc/DeconvOptim.jl) is a deconvolution toolbox which is based on many packages.
 
-Zygote.jl for automatic differentiation, Optim.jl for optimisation, CUDA.jl for CUDA acceleration, FFTW.jl for FFTs, ...
+Zygote.jl for automatic differentiation, Optim.jl for optimization, CUDA.jl for CUDA acceleration, FFTW.jl for FFTs, ...
 
 """
 
