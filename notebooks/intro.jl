@@ -731,15 +731,12 @@ Notice, how this is still nicely readable code!
 
 # ╔═╡ b4245307-e080-4923-b540-b9b3288cfae4
 md"""
-So ... how does **python** do in this comparison ?
+So ... how does **python** fare in this comparison ?
 """
-
-# ╔═╡ 312b9532-0a7f-45d0-8e5d-44359c08bc3a
-numpysum(v) = pyimport("numpy").sum(v)
 
 # ╔═╡ 449130fa-6a73-42a7-93b9-9adbca17e37e
 begin
-	bench5 = @benchmark numpysum($vlarge)
+	bench5 = @benchmark ($(np.sum))($vlarge)
 	times["Python (numpy)"] = minimum(bench5.times) / 1e6
 	bench5
 end
@@ -759,7 +756,7 @@ def pysum(A):
 
 # ╔═╡ 2f095034-9e3d-4f27-97f4-96cbeadbe681
 begin
-	bench6 = @benchmark pyutils.pysum($vlarge)
+	bench6 = @benchmark ($(pyutils.pysum))($vlarge)
 	times["Python (naive)"] = minimum(bench6.times) / 1e6
 	bench6
 end
@@ -772,8 +769,8 @@ In summary:
 # ╔═╡ b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
 let
 	bench1, bench2, bench3, bench4, bench5, bench6  # trick Pluto's dependendency tree
-	for k in sort(collect(keys(times)))
-		@printf "% 14s => %9.5f\n" k times[k]
+	for (k, t) in sort(pairs(times))
+		println("$k => $(round(t)) ms")
 	end
 end
 
@@ -3476,7 +3473,6 @@ version = "1.4.1+0"
 # ╠═eef56f3f-4a45-4e03-a173-9dcaa605ab75
 # ╟─8c347867-f139-4c3a-b454-29d34f0a1be2
 # ╟─b4245307-e080-4923-b540-b9b3288cfae4
-# ╠═312b9532-0a7f-45d0-8e5d-44359c08bc3a
 # ╠═449130fa-6a73-42a7-93b9-9adbca17e37e
 # ╟─f0fdd605-6f29-4f5b-b9bd-d03554273854
 # ╠═2f095034-9e3d-4f27-97f4-96cbeadbe681
