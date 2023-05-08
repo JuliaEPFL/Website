@@ -22,6 +22,7 @@ end
 # ╔═╡ 8edb1e45-934a-453c-a5e2-4e5a7847767a
 begin
 	using BenchmarkTools
+	using CondaPkg
 	using DifferentialEquations
 	using FFTW
 	using IntervalArithmetic: interval
@@ -38,12 +39,18 @@ begin
 	using PlutoTeachingTools
 	using PlutoTest
 	using Printf
-	using PyCall
+	using PythonCall
 	using ShortCodes
 	using SparseArrays
 	using Symbolics
 	using Unitful
-end
+	
+	# Python setup
+	CondaPkg.add("numpy")
+	pyimport("sys").path.append(".")
+	const np = pyimport("numpy")
+	const pyutils = pyimport("utils")
+end;
 
 # ╔═╡ 45e2bcc4-8fec-4305-9971-5a5a23fd91ff
 ChooseDisplayMode()
@@ -113,8 +120,6 @@ md"""
 md"""
 What independent users say:
 
-> I was doing a lab rotation where I kept trying (unsuccessfully) to convince everybody to ditch MATLAB for Python. At one of these occasions a colleague quipped **"Don't the cool kids use Julia instead of Python anyway?"**. Surprised and slightly embarrassed that I had never heard of this language (and therefore was obviously not a cool kid) I looked online and found the "Why we created Julia" post. (Julius Krumbiegel)
-
 > I believe my first impressions were: **Unlike Python the syntax for maths is actually nice and first class; and unlike MATLAB it is actually a usable programming language.** (Frames Catherine White)
 
 > I tried Numba, Cython and diving into deep Numpy lore, but no solution was satisfactory. With great resentment, I realized that for performance sensitive computing, there can be no such thing as a Python programmer: I could wrap my code in a Python cloak, but I would have to write all the hard stuff in C. A friend who had picked up Julia for theoretical physics taught me that **my frustration was common in scientific computing, and had a name: "The two language problem". Even better, it had a solution: Julia.** (Jakob Nissen)
@@ -127,13 +132,9 @@ What independent users say:
 
 > By early 2020, I saw the 1.0 release a couple years back and decided to start learning Julia, and I was immediately impressed. By March 2020, I submitted my first pull request to JuliaLang/Julia and soon discovered that **Julia was a language that I could not only use but also help develop.** (Mark Kittisopikul)
 
-> The responses mentioned the part of the code that might be responsible, and I was able to quickly pull them up from the language repository, understand the code, and fix the issue in an afternoon. That's when it hit me - the two language problem wasn't just about being able to write new performant code in the same language; it was also about **being able to explore all (well, almost all) parts of the language and its ecosystem** with the same knowledge it took to understand your own code. And being able to use the same tools and thought processes you use in your everyday code to explore, fix, or enhance them, however deep you are in the stack. It put power in the hands of the user (SundaraRaman R)
-
 > Third, I use Julia because it is free, open source and because of its community. This motivates a constant peer reviewing process and **a democratic approach to software development, publicly accessible for anyone to join on GitHub**. The community guidelines and an active and welcoming user base bring together not only great coders but also kind and ambitious people (Elisabeth Roesch)
 
 > What really electrified me about Julia was that at some point Stefan or Jeff responded directly to one of my Discourse posts without calling me an idiot and explained some Julia esoterica with great calm (which was not my average internet forum experience). **That moment felt like lightning in a bottle: The creators of a programming language just hang out? And answer your questions? Online? For free???** That still seems to be a bit of a revolutionary openness to knowledge sharing. (Miguel Raz Guzmán Macedo)
-
-> I still remember this moment where I started the PR and the community began pushing me forward. I need to quote what Jeff wrote: "One cannot help but admire this PR. **This starts as an exercise in crashing the system in every possible way, but tknopp does not care, knowing that fortune favors the bold :)**" Never in my live will I forget this post. I was part of this great community. I had the opportunity to make a difference. (Tobias Knopp)
 """
 
 # ╔═╡ 5ddfc39f-8190-4e31-b524-8fb4c7aa858e
@@ -313,7 +314,7 @@ md"""
 """
 
 # ╔═╡ 1c2ca520-a2f3-48f4-a983-681c762c1ea9
-mynorm(v) = sum(abs2, v)
+mysqnorm(v) = sum(abs2, v)
 
 # ╔═╡ 153164ac-1196-48b1-a484-5be9f79e6088
 md"""
@@ -324,7 +325,7 @@ What we did with dual numbers extends to lots of other situations thanks to dedi
 v = [1, 2, 3]
 
 # ╔═╡ 90257139-4107-4b33-95f9-ef11524b67a2
-mynorm(v)
+mysqnorm(v)
 
 # ╔═╡ fb7498d1-1003-48ee-a557-a3911038058e
 md"""
@@ -335,7 +336,7 @@ Logarithmic numbers to prevent numerical underflow (LogarithmicNumbers.jl):
 v_log = LogFloat64.(v)
 
 # ╔═╡ f0fb6911-536c-40f7-a87f-822a90b6efe9
-mynorm(v_log)
+mysqnorm(v_log)
 
 # ╔═╡ 96a1ec6c-e21d-40e2-991b-3838c6085ea4
 md"""
@@ -346,7 +347,7 @@ Numbers with physical units:
 v_unit = [1u"m", 2u"m", 3u"m"]
 
 # ╔═╡ e28bda7b-2dde-4387-b9c6-ca11ef104999
-mynorm(v_unit)
+mysqnorm(v_unit)
 
 # ╔═╡ 5d58433f-e8b0-46ed-ad11-71ed41de19e5
 md"""
@@ -357,7 +358,7 @@ Numbers with uncertainties (Measurements.jl)
 v_meas = [1 ± 0.1, 2 ± 0.2, 3 ± 0.3]
 
 # ╔═╡ 9541bf3c-8809-44ba-bcde-0794c164d7d5
-mynorm(v_meas)
+mysqnorm(v_meas)
 
 # ╔═╡ d1bfc038-6c04-4bb6-99f6-d098e160b3e5
 md"""
@@ -368,7 +369,7 @@ Intervals (IntervalArithmetic.jl)
 v_interv = [interval(0.9, 1.1), interval(1.8, 2.2), interval(2.7, 3.3)]
 
 # ╔═╡ 2f15f153-4113-4c20-8a6e-4117751d616c
-mynorm(v_interv)
+mysqnorm(v_interv)
 
 # ╔═╡ d68e7a74-de79-45cf-adf5-f1dd6a003976
 md"""
@@ -382,10 +383,10 @@ Symbolics.@variables v₁, v₂, v₃
 v_symb = [1v₁, 2v₂, 3v₃]
 
 # ╔═╡ e6610f5a-e3c1-4954-b7f1-86ecedc045db
-mynorm(v_symb)
+mysqnorm(v_symb)
 
 # ╔═╡ 95650768-62a6-4de9-8a17-60821030acca
-Symbolics.gradient(mynorm(v_symb), v_symb)
+Symbolics.gradient(mysqnorm(v_symb), v_symb)
 
 # ╔═╡ 24df1732-4cd1-4569-a030-c6ef6901176b
 md"""
@@ -577,24 +578,19 @@ md"""
 
 # ╔═╡ d7987ebe-ad03-4b64-b975-572c5f5cbcdb
 md"""
-## Speed
+## Speed, episode 1: sums
 """
 
 # ╔═╡ 1c5e704a-8761-4aa6-bd50-df6c4350443d
 md"""
-In the previous sections we discussed Julia's elaborate type system and dispatch mechanism allows the compiler to choose the best methods amongst all available implementations. Intuitively **more specialised code**, i.e. code that is allowed to exploit known structure, **is faster**. Now we explore how Julia is able to exploit this while retaining generic code ... thanks to multiple dispatch.
+In the previous sections we discussed how Julia's elaborate type system and dispatch mechanism allow the compiler to choose the best methods amongst all available implementations. Intuitively **more specialised code**, i.e. code that is allowed to exploit known structure, **is faster**. Now we explore how Julia is able to exploit this while retaining generic code ... thanks to multiple dispatch.
 """
 
 # ╔═╡ 3ecca9bd-bc70-460a-a795-28c4a6275ab9
 md"""
-Let us first try to address the question *Is Julia fast?*
+We would like to answer the question: *is Julia fast?*
 
-To some extend this is a bit of a mismatching question, since one is able to write slow code in any language ... so let's try do address something else instead: *Can Julia be fast?*
-"""
-
-# ╔═╡ 413e8336-1a10-4ce8-8169-94d2b9d6e078
-md"""
-### A simple example: Sums
+But to some extent this is a misleading question, since one can write slow code in any language... so let's try to answer something else instead: *can Julia be fast?*
 """
 
 # ╔═╡ 5753e3a3-2499-4b9c-9c69-a6d400ea64db
@@ -604,7 +600,7 @@ function mysum(v)
         result += v[i]
     end
     result
-end;
+end
 
 # ╔═╡ cba77bab-1d67-4557-8b95-9466f0be59ba
 begin
@@ -642,10 +638,10 @@ begin
 end
 
 # ╔═╡ 0d935958-7f45-49ba-b630-0334b027a0c1
-let
-	bench = @benchmark c_sum($vlarge)
-	times["C (naive)"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench1 = @benchmark c_sum($vlarge)
+	times["C (naive)"] = minimum(bench1.times) / 1e6
+	bench1
 end
 
 # ╔═╡ 8c6804cf-5b9a-4793-8f2d-fdf35ad720ee
@@ -689,10 +685,10 @@ begin
 end
 
 # ╔═╡ acff670e-5011-4212-8f52-95c1b5477d5d
-let
-	bench = @benchmark c_sum_vectorised($vlarge)
-	times["C (vectorised)"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench2 = @benchmark c_sum_vectorised($vlarge)
+	times["C (vectorised)"] = minimum(bench2.times) / 1e6
+	bench2
 end
 
 # ╔═╡ 9b1329aa-4197-4949-bbb9-42a2275c7c2b
@@ -701,31 +697,31 @@ So how does the **Julia version** do?
 """
 
 # ╔═╡ a86eb565-ff94-440f-8ef7-632a9dcd6c82
-let
-	bench = @benchmark mysum($vlarge)
-	times["Julia (naive)"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench3 = @benchmark mysum($vlarge)
+	times["Julia (naive)"] = minimum(bench3.times) / 1e6
+	bench3
 end
 
 # ╔═╡ 51e1c815-bc3b-4373-a236-c3e7df5d46de
 md"""
-A bit disappointing ... but unlike vectorised C we have not yet tried all tricks! Let's try an **optimised Julia version**.
+A bit disappointing... but unlike vectorised C we have not yet tried all tricks! Let's try an **optimised Julia version**.
 """
 
 # ╔═╡ 36d82a73-b463-421f-aac3-7e2ce6905563
 function fastsum(v)
     result = zero(eltype(v))
-    @simd for i in 1:length(v)    # @simd enforces vectorisation in the loop
-        @inbounds result += v[i]  # @inbounds suppresses bound checks
+    @simd for i in 1:length(v)    # @simd => instruction vectorisation in the loop
+        @inbounds result += v[i]  # @inbounds => suppresses bound checks
     end
     result
 end;
 
 # ╔═╡ eef56f3f-4a45-4e03-a173-9dcaa605ab75
-let
-	bench = @benchmark fastsum($vlarge)
-	times["Julia (simd)"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench4 = @benchmark fastsum($vlarge)
+	times["Julia (simd)"] = minimum(bench4.times) / 1e6
+	bench4
 end
 
 # ╔═╡ 8c347867-f139-4c3a-b454-29d34f0a1be2
@@ -742,29 +738,30 @@ So ... how does **python** do in this comparison ?
 numpysum(v) = pyimport("numpy").sum(v)
 
 # ╔═╡ 449130fa-6a73-42a7-93b9-9adbca17e37e
-let
-	bench = @benchmark numpysum($vlarge)
-	times["Numpy"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench5 = @benchmark numpysum($vlarge)
+	times["Python (numpy)"] = minimum(bench5.times) / 1e6
+	bench5
 end
 
-# ╔═╡ d7aeb027-1642-4acc-8021-b3aad1463c29
-begin
-py"""
-def py_sum(A):
+# ╔═╡ f0fdd605-6f29-4f5b-b9bd-d03554273854
+md"""
+But that's not real Python, that's C in disguise.
+The naive version (like the one we wrote in Julia) would look something like this:
+```python
+def pysum(A):
     s = 0.0
     for a in A:
         s += a
     return s
+```
 """
-	pysum = py"py_sum"
-end;
 
 # ╔═╡ 2f095034-9e3d-4f27-97f4-96cbeadbe681
-let
-	bench = @benchmark pysum($vlarge)
-	times["Python (naive)"] = minimum(bench.times) / 1e6
-	bench
+begin
+	bench6 = @benchmark pyutils.pysum($vlarge)
+	times["Python (naive)"] = minimum(bench6.times) / 1e6
+	bench6
 end
 
 # ╔═╡ 0f6c85be-7d32-4e0c-b085-a04227570a46
@@ -773,13 +770,21 @@ In summary:
 """
 
 # ╔═╡ b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
-for k in sort(collect(keys(times)))
-	@printf "% 14s => %9.5f\n" k times[k]
+let
+	bench1, bench2, bench3, bench4, bench5, bench6  # trick Pluto's dependendency tree
+	for k in sort(collect(keys(times)))
+		@printf "% 14s => %9.5f\n" k times[k]
+	end
 end
+
+# ╔═╡ 47586eae-33d9-44e5-be6d-3ba5eedf1d5e
+md"""
+## Speed, episode 2: Vandermonde matrices
+"""
 
 # ╔═╡ f5a0e40c-4171-4e19-b50a-e464122012ce
 md"""
-### A more complicated example: Vandermonde matrices
+
 (modified from [Steven's Julia intro](https://web.mit.edu/18.06/www/Fall17/1806/julia/Julia-intro.pdf))
 
 $$\begin{align}
@@ -787,9 +792,6 @@ $$\begin{align}
 \begin{bmatrix}1&\alpha _{1}&\alpha _{1}^{2}&\dots &\alpha _{1}^{n-1}\\1&\alpha _{2}&\alpha _{2}^{2}&\dots &\alpha _{2}^{n-1}\\1&\alpha _{3}&\alpha _{3}^{2}&\dots &\alpha _{3}^{n-1}\\\vdots &\vdots &\vdots &\ddots &\vdots \\1&\alpha _{m}&\alpha _{m}^{2}&\dots &\alpha _{m}^{n-1}\end{bmatrix}
 \end{align}$$
 """
-
-# ╔═╡ 3b239309-049f-4667-afa6-1e6a8e017f37
-np = pyimport("numpy");
 
 # ╔═╡ da9b80e5-89ea-4bc8-85aa-d9a0a4d4dab4
 np.vander(1:5, increasing=true)
@@ -808,16 +810,16 @@ Here is a type-generic Julia implementation:
 function vander(x::AbstractVector{T}) where T
     m = length(x)
     V = Matrix{T}(undef, m, m)
-    for j = 1:m
+    for j in 1:m
         V[j,1] = one(x[j])
     end
-    for i= 2:m
-        for j = 1:m
+    for i in 2:m
+        for j in 1:m
             V[j,i] = x[j] * V[j,i-1]
             end
         end
     return V
-end;
+end
 
 # ╔═╡ 78dd39c7-f2a3-42b0-874e-2f50e57ee219
 vander(1:5)
@@ -828,15 +830,14 @@ md"""
 """
 
 # ╔═╡ 75a0daa1-a01d-47cc-8cf0-e3d6c75dd5be
-begin
+let
 	ns = exp10.(range(1, 3, length=20))
-
 	tnp = Float64[]
 	tjl = Float64[]
 	for n in ns
     	x = collect(1:n)
-    	push!(tnp, @belapsed np.vander($x) samples=3 evals=1)
-    	push!(tjl, @belapsed vander($x)    samples=3 evals=1)
+    	push!(tnp, @belapsed np.vander($x) samples=2 evals=1)
+    	push!(tjl, @belapsed vander($x)    samples=2 evals=1)
 	end
 	plot(ns, tnp./tjl, m=:circle, xscale=:log10, yscale=:log10, ylims=[1, Inf], xlab="matrix size", ylab="NumPy time / Julia time", legend=:false)
 end
@@ -853,7 +854,7 @@ vander(Int32[4, 8, 16, 32])
 md"""
 This includes **non-numerical types** ... the only assumption is that the type induces a multiplicative group, i.e. has a `one` function to yield the identity element and an apropriate `*` defined.
 
-A rather unusual one is `String`, which works since `one(String) == ""`.
+A rather unusual one is `String`, which works since `one(String) == ""` and `"abc" * "def" = "abcdef"`.
 """
 
 # ╔═╡ b95d3f00-5155-46e4-aac3-4906849ce98f
@@ -995,6 +996,7 @@ md"""
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
@@ -1011,7 +1013,7 @@ PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
@@ -1019,6 +1021,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 BenchmarkTools = "~1.3.2"
+CondaPkg = "~0.2.18"
 DifferentialEquations = "~7.7.0"
 FFTW = "~1.6.0"
 ImageIO = "~0.6.6"
@@ -1031,7 +1034,7 @@ Plots = "~1.38.10"
 PlutoTeachingTools = "~0.2.9"
 PlutoTest = "~0.2.2"
 PlutoUI = "~0.7.50"
-PyCall = "~1.95.1"
+PythonCall = "~0.9.12"
 ShortCodes = "~0.3.5"
 Symbolics = "~5.2.0"
 Unitful = "~1.13.1"
@@ -1043,7 +1046,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.0-rc3"
 manifest_format = "2.0"
-project_hash = "c8594bbb82592f3eb6e048ad626f1c9cf86a854c"
+project_hash = "6da20b10406c3925b32110a6d77c62a68a07310f"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1303,22 +1306,22 @@ git-tree-sha1 = "b306df2650947e9eb100ec125ff8c65ca2053d30"
 uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
 version = "2.1.1"
 
-[[deps.Conda]]
-deps = ["Downloads", "JSON", "VersionParsing"]
-git-tree-sha1 = "e32a90da027ca45d84678b826fffd3110bb3fc90"
-uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.8.0"
+[[deps.CondaPkg]]
+deps = ["JSON3", "Markdown", "MicroMamba", "Pidfile", "Pkg", "TOML"]
+git-tree-sha1 = "741146cf2ced5859faae76a84b541aa9af1a78bb"
+uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+version = "0.2.18"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "738fec4d684a9a6ee9598a8bfee305b26831f28c"
+git-tree-sha1 = "89a9db8d28102b094992472d333674bd1a83ce2a"
 uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-version = "1.5.2"
+version = "1.5.1"
 weakdeps = ["IntervalSets", "StaticArrays"]
 
     [deps.ConstructionBase.extensions]
-    ConstructionBaseIntervalSetsExt = "IntervalSets"
-    ConstructionBaseStaticArraysExt = "StaticArrays"
+    IntervalSetsExt = "IntervalSets"
+    StaticArraysExt = "StaticArrays"
 
 [[deps.Contour]]
 git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
@@ -1365,9 +1368,9 @@ version = "1.9.1"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "ChainRulesCore", "DataStructures", "DocStringExtensions", "EnumX", "FastBroadcast", "ForwardDiff", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "Parameters", "PreallocationTools", "Printf", "RecursiveArrayTools", "Reexport", "Requires", "SciMLBase", "Setfield", "SparseArrays", "Static", "StaticArraysCore", "Statistics", "Tricks", "TruncatedStacktraces", "ZygoteRules"]
-git-tree-sha1 = "ed1108bd9a68977d5e0cbd8b2882293337c15f1c"
+git-tree-sha1 = "988bbd7283aaee5c34cd3cc09e78e7c45a931c5b"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.124.0"
+version = "6.123.0"
 
     [deps.DiffEqBase.extensions]
     DiffEqBaseDistributionsExt = "Distributions"
@@ -1439,9 +1442,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "c2614fa3aafe03d1a44b8e16508d9be718b8095a"
+git-tree-sha1 = "180538ef4e3aa02b01413055a7a9e8b6047663e1"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.89"
+version = "0.25.88"
 
     [deps.Distributions.extensions]
     DistributionsChainRulesCoreExt = "ChainRulesCore"
@@ -2204,6 +2207,12 @@ git-tree-sha1 = "2b1dfcba103de714d31c033b5dacc2e4a12c7caa"
 uuid = "c03570c3-d221-55d1-a50c-7939bbd78826"
 version = "0.4.4"
 
+[[deps.MicroMamba]]
+deps = ["Pkg", "Scratch", "micromamba_jll"]
+git-tree-sha1 = "a6a4771aba1dc8942bc0f44ff9f8ee0f893ef888"
+uuid = "0b3b1443-0f03-428d-bdfb-f27f9c1191ea"
+version = "0.1.12"
+
 [[deps.Missings]]
 deps = ["DataAPI"]
 git-tree-sha1 = "f66bdc5de519e8f8ae43bdc598782d35a25b1272"
@@ -2345,9 +2354,9 @@ version = "1.6.0"
 
 [[deps.OrdinaryDiffEq]]
 deps = ["Adapt", "ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "ExponentialUtilities", "FastBroadcast", "FastClosures", "FiniteDiff", "ForwardDiff", "FunctionWrappersWrappers", "IfElse", "LineSearches", "LinearAlgebra", "LinearSolve", "Logging", "LoopVectorization", "MacroTools", "MuladdMacro", "NLsolve", "NonlinearSolve", "Polyester", "PreallocationTools", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLNLSolve", "SimpleNonlinearSolve", "SimpleUnPack", "SparseArrays", "SparseDiffTools", "StaticArrayInterface", "StaticArrays", "TruncatedStacktraces"]
-git-tree-sha1 = "47fc5cf4174a7d45fa541669abc5405d9ef6b8df"
+git-tree-sha1 = "f73db757eada8cb774082f2009928a42c5043b6a"
 uuid = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-version = "6.51.1"
+version = "6.51.0"
 
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -2383,6 +2392,12 @@ deps = ["Dates", "SnoopPrecompile"]
 git-tree-sha1 = "478ac6c952fddd4399e71d4779797c538d0ff2bf"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.5.8"
+
+[[deps.Pidfile]]
+deps = ["FileWatching", "Test"]
+git-tree-sha1 = "2d8aaf8ee10df53d0dfb9b8ee44ae7c04ced2b03"
+uuid = "fa939f87-e72e-5be4-a000-7fc836dbe307"
+version = "1.3.0"
 
 [[deps.Pipe]]
 git-tree-sha1 = "6842804e7867b115ca9de748a0cf6b364523c16d"
@@ -2536,11 +2551,11 @@ git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.7.2"
 
-[[deps.PyCall]]
-deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
-git-tree-sha1 = "62f417f6ad727987c755549e9cd88c46578da562"
-uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
-version = "1.95.1"
+[[deps.PythonCall]]
+deps = ["CondaPkg", "Dates", "Libdl", "MacroTools", "Markdown", "Pkg", "REPL", "Requires", "Serialization", "Tables", "UnsafePointers"]
+git-tree-sha1 = "f27dabb05ec811675a9eefe49325a14ae7266b0b"
+uuid = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+version = "0.9.12"
 
 [[deps.QOI]]
 deps = ["ColorTypes", "FileIO", "FixedPointNumbers"]
@@ -2700,9 +2715,9 @@ version = "1.91.7"
 
 [[deps.SciMLNLSolve]]
 deps = ["DiffEqBase", "LineSearches", "NLsolve", "Reexport", "SciMLBase"]
-git-tree-sha1 = "a8eb97c56cac50c21096582afb2a0110784dc36e"
+git-tree-sha1 = "2e1606c282fae6bd9aed4f159695774a44b9c75f"
 uuid = "e9a6253c-8580-4d32-9898-8661bb511710"
-version = "0.1.6"
+version = "0.1.4"
 
 [[deps.SciMLOperators]]
 deps = ["ArrayInterface", "DocStringExtensions", "Lazy", "LinearAlgebra", "Setfield", "SparseArrays", "StaticArraysCore", "Tricks"]
@@ -3063,6 +3078,11 @@ git-tree-sha1 = "d5f4ec8c22db63bd3ccb239f640e895cfde145aa"
 uuid = "a7c27f48-0311-42f6-a7f8-2c11e75eb415"
 version = "0.1.2"
 
+[[deps.UnsafePointers]]
+git-tree-sha1 = "c81331b3b2e60a982be57c046ec91f599ede674a"
+uuid = "e17b2a0c-0bdf-430a-bd0c-3a23cae4ff39"
+version = "1.0.0"
+
 [[deps.Unzip]]
 git-tree-sha1 = "ca0969166a028236229f63514992fc073799bb78"
 uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
@@ -3073,11 +3093,6 @@ deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "IfElse", "LayoutPoin
 git-tree-sha1 = "b182207d4af54ac64cbc71797765068fdeff475d"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.21.64"
-
-[[deps.VersionParsing]]
-git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
-uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
-version = "1.3.0"
 
 [[deps.VertexSafeGraphs]]
 deps = ["Graphs"]
@@ -3299,6 +3314,12 @@ git-tree-sha1 = "b910cb81ef3fe6e78bf6acee440bda86fd6ae00c"
 uuid = "f27f6e37-5d2b-51aa-960f-b287f2bc3b7a"
 version = "1.3.7+1"
 
+[[deps.micromamba_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
+git-tree-sha1 = "087555b0405ed6adf526cef22b6931606b5af8ac"
+uuid = "f8abcde7-e9b7-5caa-b8af-a437887ae8e4"
+version = "1.4.1+0"
+
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
@@ -3440,7 +3461,6 @@ version = "1.4.1+0"
 # ╟─d7987ebe-ad03-4b64-b975-572c5f5cbcdb
 # ╟─1c5e704a-8761-4aa6-bd50-df6c4350443d
 # ╟─3ecca9bd-bc70-460a-a795-28c4a6275ab9
-# ╟─413e8336-1a10-4ce8-8169-94d2b9d6e078
 # ╠═5753e3a3-2499-4b9c-9c69-a6d400ea64db
 # ╠═cba77bab-1d67-4557-8b95-9466f0be59ba
 # ╟─2d1e09dd-0348-4ac8-a663-0b799ec38162
@@ -3458,12 +3478,12 @@ version = "1.4.1+0"
 # ╟─b4245307-e080-4923-b540-b9b3288cfae4
 # ╠═312b9532-0a7f-45d0-8e5d-44359c08bc3a
 # ╠═449130fa-6a73-42a7-93b9-9adbca17e37e
-# ╠═d7aeb027-1642-4acc-8021-b3aad1463c29
+# ╟─f0fdd605-6f29-4f5b-b9bd-d03554273854
 # ╠═2f095034-9e3d-4f27-97f4-96cbeadbe681
 # ╟─0f6c85be-7d32-4e0c-b085-a04227570a46
 # ╠═b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
+# ╟─47586eae-33d9-44e5-be6d-3ba5eedf1d5e
 # ╟─f5a0e40c-4171-4e19-b50a-e464122012ce
-# ╠═3b239309-049f-4667-afa6-1e6a8e017f37
 # ╠═da9b80e5-89ea-4bc8-85aa-d9a0a4d4dab4
 # ╟─661dd8d7-e18a-4a4f-b2fd-6ee0a29087bc
 # ╠═e12f6f12-335c-41a9-9255-c03a43564056
