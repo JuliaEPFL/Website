@@ -24,6 +24,7 @@ begin
 	using BenchmarkTools
 	using CondaPkg
 	using DifferentialEquations
+	using DeconvOptim
 	using FFTW
 	using IntervalArithmetic: interval
 	using IndexFunArrays
@@ -42,6 +43,7 @@ begin
 	using PythonCall
 	using ShortCodes
 	using SparseArrays
+	using TestImages
 	using Symbolics
 	using Unitful
 	
@@ -870,9 +872,14 @@ Packages designed separately, whose developers are unaware of each other, can wo
 # ╔═╡ 8f9d1a94-14b8-4566-a763-eefc7cb5c234
 YouTube("kc9HwsxE1OY")
 
+# ╔═╡ 489230aa-1d56-4ebc-a47e-b3d2a0aa5dec
+
+
 # ╔═╡ df18c0a3-85dd-42bf-85c1-d190589ea27e
-md"""
-Differential equation with uncertain parameters.
+md""" ## DifferentialEquations.jl
+[DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/) is one of the largest packages in the Julia ecosystem.
+
+It allows to solve many, many different differential equations. Also works with CUDA.jl!
 """
 
 # ╔═╡ dc22ab5a-bd56-4d20-b1b5-d0409c8add73
@@ -885,8 +892,8 @@ end
 
 # ╔═╡ e007e52e-82be-439e-be99-76f75cc7108c
 begin
-	g = 9.79  # Gravitational constant
-	L = 1.00 ± 0.01  # Length of the pendulum
+	g = 9.79 ± 0.02 # Gravitational constant
+	L = 1.00 ± 0.02  # Length of the pendulum
 	u₀ = [0 ± 0, (π / 60) ± 0.001]  # Initial speed and angle WITH UNCERTAINTY
 	tspan = (0 ± 0, 6 ± 0)  # Time interval
 	p = (g, L)  # Numerical parameters
@@ -899,16 +906,20 @@ end
 md" ## FFT Convolutions"
 
 # ╔═╡ 3e1ae05c-8e7c-4da2-9f5e-444271b46738
-md"σ=$(@bind σ Slider(1:100, show_value=true))"
+md"σ=$(@bind σ Slider(0.1:0.2:10, show_value=true))"
 
 # ╔═╡ 6043fb1b-376e-419e-b931-4bd32941e070
-kernel = exp.(.-((-100:99)'.^2 .+ (-100:99).^2) ./2 ./ σ.^2);
+begin
+	kernel = exp.(.-((-100:99)'.^2 .+ (-100:99).^2) ./2 ./ σ.^2);
+	kernel /= sum(kernel)
+end;
 
 # ╔═╡ bc1b9361-2bd7-4747-9963-de95f6987549
 simshow(kernel)
 
 # ╔═╡ 7c278dca-f1a2-43a8-b641-e85183230226
-img = box((200, 200), (100, 100)) .-  box((200, 200), (30, 30));
+#img = box((200, 200), (100, 100)) .-  box((200, 200), (30, 30));
+img = Float32.(Gray.(testimage("mandril_color")[21:2:420, 51:2:450]));
 
 # ╔═╡ 19fd5bf8-c38c-4509-9808-bcfa497015f3
 simshow(img)
@@ -920,6 +931,23 @@ end
 
 # ╔═╡ 5e68ea8c-a504-45be-94c2-8a7c1d38aa28
 simshow(conv(img, kernel))
+
+# ╔═╡ a8c5b30d-3964-4b76-b153-c67c2d2a0a82
+md""" ## Solving the inverse problem
+[DeconvOptim.jl](https://github.com/roflmaostc/DeconvOptim.jl) is a deconvolution toolbox which is based on many packages.
+
+Zygote.jl for automatic differentiation, Optim.jl for optimisation, CUDA.jl for CUDA acceleration, FFTW.jl for FFTs, ...
+
+"""
+
+# ╔═╡ 6893baf5-f5f7-43a0-8823-c42e6acb2bc8
+begin
+	img_deconv, res = DeconvOptim.deconvolution(img, ifftshift(kernel), iterations=10, regularizer=TV(), λ=0.01)
+	res
+end
+
+# ╔═╡ 5078e4cb-fb45-4066-9bb7-1b83575f5e52
+simshow(img_deconv, set_one=false)
 
 # ╔═╡ 025f06a6-470e-4f89-9147-fb54d40a23c6
 md" ## CUDA
@@ -963,7 +991,7 @@ md"""
 # ╔═╡ beb4699b-50e6-4e04-b227-f33c87defe46
 md"""
 - No big company supporting it ($\neq$ PyTorch, Tensorflow, JAX)
-- Only some areas are state-of-the-art (scientific machine learning)
+- Packages and Julia versions are updating quickly 
 - Recent discussions:
   - [State of machine learning (2022)](https://discourse.julialang.org/t/state-of-machine-learning-in-julia/74385/)
   - [State of automatic differentiation (2023)](https://discourse.julialang.org/t/whats-the-state-of-automatic-differentiation-in-julia-january-2023/92473/)
@@ -994,6 +1022,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+DeconvOptim = "03e7cd2f-1a03-4ea9-b59b-760a446df67f"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
@@ -1014,11 +1043,13 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+TestImages = "5e47fb64-e119-507b-a336-dd2b206d9990"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 BenchmarkTools = "~1.3.2"
 CondaPkg = "~0.2.18"
+DeconvOptim = "~0.7.1"
 DifferentialEquations = "~7.7.0"
 FFTW = "~1.6.0"
 ImageIO = "~0.6.6"
@@ -1034,6 +1065,7 @@ PlutoUI = "~0.7.50"
 PythonCall = "~0.9.12"
 ShortCodes = "~0.3.5"
 Symbolics = "~5.2.0"
+TestImages = "~1.7.1"
 Unitful = "~1.13.1"
 """
 
@@ -1043,7 +1075,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.0-rc3"
 manifest_format = "2.0"
-project_hash = "6da20b10406c3925b32110a6d77c62a68a07310f"
+project_hash = "c05bba219300a345c5a996f82c4b5a3e0dddcd74"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1129,6 +1161,12 @@ version = "0.8.18"
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
+[[deps.AxisAlgorithms]]
+deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
+git-tree-sha1 = "66771c8d21c8ff5e3a93379480a2307ac36863f7"
+uuid = "13072b0f-2c55-5437-9ae7-d433b7a33950"
+version = "1.0.1"
+
 [[deps.AxisArrays]]
 deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
 git-tree-sha1 = "1dd4d9f5beebac0c03446918741b1a03dc5e5788"
@@ -1212,6 +1250,12 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
 uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
+
+[[deps.ChainRules]]
+deps = ["Adapt", "ChainRulesCore", "Compat", "Distributed", "GPUArraysCore", "IrrationalConstants", "LinearAlgebra", "Random", "RealDot", "SparseArrays", "Statistics", "StructArrays"]
+git-tree-sha1 = "8bae903893aeeb429cf732cf1888490b93ecf265"
+uuid = "082447d4-558c-5d27-93f4-14fc19e9eca2"
+version = "1.49.0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -1350,6 +1394,12 @@ version = "1.0.0"
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[deps.DeconvOptim]]
+deps = ["ChainRulesCore", "FFTW", "FillArrays", "Interpolations", "LineSearches", "LinearAlgebra", "Noise", "Optim", "Requires", "SnoopPrecompile", "Statistics", "StatsBase", "Tullio", "Zygote"]
+git-tree-sha1 = "fb5432f644e61207293dbc32d642add2a53b580a"
+uuid = "03e7cd2f-1a03-4ea9-b59b-760a446df67f"
+version = "0.7.1"
 
 [[deps.DelayDiffEq]]
 deps = ["ArrayInterface", "DataStructures", "DiffEqBase", "LinearAlgebra", "Logging", "OrdinaryDiffEq", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SimpleUnPack"]
@@ -1636,6 +1686,12 @@ git-tree-sha1 = "d972031d28c8c8d9d7b41a536ad7bb0c2579caca"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
 version = "3.3.8+0"
 
+[[deps.GPUArrays]]
+deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
+git-tree-sha1 = "9ade6983c3dbbd492cf5729f865fe030d1541463"
+uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
+version = "8.6.6"
+
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
 git-tree-sha1 = "1cd7f0af1aa58abc02ea1d872953a97359cb87fa"
@@ -1749,6 +1805,12 @@ git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.2"
 
+[[deps.IRTools]]
+deps = ["InteractiveUtils", "MacroTools", "Test"]
+git-tree-sha1 = "0ade27f0c49cebd8db2523c4eeccf779407cf12c"
+uuid = "7869d1d1-7146-5819-86e3-90919afe41df"
+version = "0.4.9"
+
 [[deps.IfElse]]
 git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
 uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
@@ -1777,6 +1839,18 @@ deps = ["FileIO", "IndirectArrays", "JpegTurbo", "LazyModules", "Netpbm", "OpenE
 git-tree-sha1 = "342f789fd041a55166764c351da1710db97ce0e0"
 uuid = "82e4d734-157c-48bb-816b-45c225c6df19"
 version = "0.6.6"
+
+[[deps.ImageMagick]]
+deps = ["FileIO", "ImageCore", "ImageMagick_jll", "InteractiveUtils"]
+git-tree-sha1 = "ca8d917903e7a1126b6583a097c5cb7a0bedeac1"
+uuid = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+version = "1.2.2"
+
+[[deps.ImageMagick_jll]]
+deps = ["JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pkg", "Zlib_jll", "libpng_jll"]
+git-tree-sha1 = "1c0a2295cca535fabaf2029062912591e9b61987"
+uuid = "c73af94c-d91f-53ed-93a7-00f77d67a9d7"
+version = "6.9.10-12+3"
 
 [[deps.ImageMetadata]]
 deps = ["AxisArrays", "ImageAxes", "ImageBase", "ImageCore"]
@@ -1826,6 +1900,12 @@ version = "2023.1.0+0"
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[deps.Interpolations]]
+deps = ["Adapt", "AxisAlgorithms", "ChainRulesCore", "LinearAlgebra", "OffsetArrays", "Random", "Ratios", "Requires", "SharedArrays", "SparseArrays", "StaticArrays", "WoodburyMatrices"]
+git-tree-sha1 = "721ec2cf720536ad005cb38f50dbba7b02419a15"
+uuid = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+version = "0.14.7"
 
 [[deps.IntervalArithmetic]]
 deps = ["CRlibm", "FastRounding", "LinearAlgebra", "Markdown", "Random", "RecipesBase", "RoundingEmulator", "SetRounding", "StaticArrays"]
@@ -1937,6 +2017,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "bf36f528eec6634efc60d7ec062008f171071434"
 uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
 version = "3.0.0+1"
+
+[[deps.LLVM]]
+deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
+git-tree-sha1 = "a8960cae30b42b66dd41808beb76490519f6f9e2"
+uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
+version = "5.0.0"
+
+[[deps.LLVMExtra_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
+git-tree-sha1 = "09b7505cc0b1cee87e5d4a26eea61d2e1b0dcd35"
+uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
+version = "0.0.21+0"
 
 [[deps.LZO_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2274,6 +2366,12 @@ version = "1.1.0"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
+[[deps.Noise]]
+deps = ["ImageCore", "PoissonRandom", "Random"]
+git-tree-sha1 = "1427315f223bc7c754c1d97a12c2b5fc059dafbc"
+uuid = "81d43f40-5267-43b7-ae1c-8b967f377efa"
+version = "0.3.2"
+
 [[deps.NonlinearSolve]]
 deps = ["ArrayInterface", "DiffEqBase", "EnumX", "FiniteDiff", "ForwardDiff", "LinearAlgebra", "LinearSolve", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SnoopPrecompile", "SparseArrays", "SparseDiffTools", "StaticArraysCore", "UnPack"]
 git-tree-sha1 = "a6000c813371cd3cd9cbbdf8a356fc3a97138d92"
@@ -2603,6 +2701,22 @@ git-tree-sha1 = "b9039e93773ddcfc828f12aadf7115b4b4d225f5"
 uuid = "b3c3ace0-ae52-54e7-9d0b-2c1406fd6b9d"
 version = "0.3.2"
 
+[[deps.Ratios]]
+deps = ["Requires"]
+git-tree-sha1 = "6d7bb727e76147ba18eed998700998e17b8e4911"
+uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
+version = "0.4.4"
+weakdeps = ["FixedPointNumbers"]
+
+    [deps.Ratios.extensions]
+    RatiosFixedPointNumbersExt = "FixedPointNumbers"
+
+[[deps.RealDot]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "9f0a1b71baaf7650f4fa8a1d168c7fb6ee41f0c9"
+uuid = "c1ae055f-0cd5-4b69-90a6-9a35b1a98df9"
+version = "0.1.0"
+
 [[deps.RecipesBase]]
 deps = ["PrecompileTools"]
 git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
@@ -2916,6 +3030,18 @@ git-tree-sha1 = "b3e9c174a9df77ed7b66fc0aa605def3351a0653"
 uuid = "7792a7ef-975c-4747-a70f-980b88e8d1da"
 version = "0.4.13"
 
+[[deps.StringDistances]]
+deps = ["Distances", "StatsAPI"]
+git-tree-sha1 = "ceeef74797d961aee825aabf71446d6aba898acb"
+uuid = "88034a9c-02f8-509d-84a9-84ec65e18404"
+version = "0.11.2"
+
+[[deps.StructArrays]]
+deps = ["Adapt", "DataAPI", "GPUArraysCore", "StaticArraysCore", "Tables"]
+git-tree-sha1 = "521a0e828e98bb69042fec1809c1b5a680eb7389"
+uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
+version = "0.6.15"
+
 [[deps.StructTypes]]
 deps = ["Dates", "UUIDs"]
 git-tree-sha1 = "ca4bccb03acf9faaf4137a9abc1881ed1841aa70"
@@ -2993,6 +3119,12 @@ version = "0.1.1"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[deps.TestImages]]
+deps = ["AxisArrays", "ColorTypes", "FileIO", "ImageIO", "ImageMagick", "OffsetArrays", "Pkg", "StringDistances"]
+git-tree-sha1 = "03492434a1bdde3026288939fc31b5660407b624"
+uuid = "5e47fb64-e119-507b-a336-dd2b206d9990"
+version = "1.7.1"
+
 [[deps.ThreadingUtilities]]
 deps = ["ManualMemory"]
 git-tree-sha1 = "c97f60dd4f2331e1a495527f80d242501d2f9865"
@@ -3039,6 +3171,12 @@ deps = ["InteractiveUtils", "MacroTools", "Preferences"]
 git-tree-sha1 = "7bc1632a4eafbe9bd94cf1a784a9a4eb5e040a91"
 uuid = "781d530d-4396-4725-bb49-402e4bee1e77"
 version = "1.3.0"
+
+[[deps.Tullio]]
+deps = ["ChainRulesCore", "DiffRules", "LinearAlgebra", "Requires"]
+git-tree-sha1 = "7871a39eac745697ee512a87eeff06a048a7905b"
+uuid = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
+version = "0.3.5"
 
 [[deps.URIs]]
 git-tree-sha1 = "074f993b0ca030848b897beff716d93aca60f06a"
@@ -3108,6 +3246,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "4528479aa01ee1b3b4cd0e6faef0e04cf16466da"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.25.0+0"
+
+[[deps.WoodburyMatrices]]
+deps = ["LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "de67fa59e33ad156a590055375a30b23c40299d3"
+uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
+version = "0.5.5"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
@@ -3257,6 +3401,22 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "49ce682769cd5de6c72dcf1b94ed7790cd08974c"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
 version = "1.5.5+0"
+
+[[deps.Zygote]]
+deps = ["AbstractFFTs", "ChainRules", "ChainRulesCore", "DiffRules", "Distributed", "FillArrays", "ForwardDiff", "GPUArrays", "GPUArraysCore", "IRTools", "InteractiveUtils", "LinearAlgebra", "LogExpFunctions", "MacroTools", "NaNMath", "Random", "Requires", "SnoopPrecompile", "SparseArrays", "SpecialFunctions", "Statistics", "ZygoteRules"]
+git-tree-sha1 = "987ae5554ca90e837594a0f30325eeb5e7303d1e"
+uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
+version = "0.6.60"
+
+    [deps.Zygote.extensions]
+    ZygoteColorsExt = "Colors"
+    ZygoteDistancesExt = "Distances"
+    ZygoteTrackerExt = "Tracker"
+
+    [deps.Zygote.weakdeps]
+    Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+    Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+    Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [[deps.ZygoteRules]]
 deps = ["ChainRulesCore", "MacroTools"]
@@ -3493,6 +3653,7 @@ version = "1.4.1+0"
 # ╟─ddb62c34-eca9-4108-97c4-cacdf3a5de60
 # ╟─4da69ddd-cff0-4aff-abb7-4e4d5d2bb04a
 # ╠═8f9d1a94-14b8-4566-a763-eefc7cb5c234
+# ╠═489230aa-1d56-4ebc-a47e-b3d2a0aa5dec
 # ╟─df18c0a3-85dd-42bf-85c1-d190589ea27e
 # ╠═dc22ab5a-bd56-4d20-b1b5-d0409c8add73
 # ╠═e007e52e-82be-439e-be99-76f75cc7108c
@@ -3501,9 +3662,12 @@ version = "1.4.1+0"
 # ╠═bc1b9361-2bd7-4747-9963-de95f6987549
 # ╟─3e1ae05c-8e7c-4da2-9f5e-444271b46738
 # ╠═7c278dca-f1a2-43a8-b641-e85183230226
-# ╠═19fd5bf8-c38c-4509-9808-bcfa497015f3
+# ╟─19fd5bf8-c38c-4509-9808-bcfa497015f3
 # ╠═f21d04af-28ef-40e1-8328-02fd76eef52f
 # ╠═5e68ea8c-a504-45be-94c2-8a7c1d38aa28
+# ╟─a8c5b30d-3964-4b76-b153-c67c2d2a0a82
+# ╠═6893baf5-f5f7-43a0-8823-c42e6acb2bc8
+# ╟─5078e4cb-fb45-4066-9bb7-1b83575f5e52
 # ╟─025f06a6-470e-4f89-9147-fb54d40a23c6
 # ╟─7a18486a-847a-417b-a28e-463df434640e
 # ╟─3e5557d3-4e9f-488b-8725-b396a02fc18a
