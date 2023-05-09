@@ -77,7 +77,7 @@ md"""
 
 # ╔═╡ 4d7fdbcd-e0ef-4801-8c57-a18e930fc273
 md"""
-> We are power Matlab users. Some of us are Lisp hackers. Some are Pythonistas, others Rubyists, still others Perl hackers. There are those of us who used Mathematica before we could grow facial hair. There are those who still can't grow facial hair. We've generated more R plots than any sane person should. C is our desert island programming language.
+> We are power Matlab users. Some of us are Lisp hackers. Some are Pythonistas, others Rubyists, still others Perl hackers. **There are those of us who used Mathematica before we could grow facial hair. There are those who still can't grow facial hair.** We've generated more R plots than any sane person should. C is our desert island programming language.
 >
 > We love all of these languages; they are wonderful and powerful. For the work we do — scientific computing, machine learning, data mining, large-scale linear algebra, distributed and parallel computing — each one is perfect for some aspects of the work and terrible for others. Each one is a trade-off.
 >
@@ -118,29 +118,10 @@ md"""
 ## 2022: user testimonies
 """
 
-# ╔═╡ 905281d4-ce29-47f1-9ca9-fd9fa76e1808
-md"""
-What independent users say:
-
-> I believe my first impressions were: **Unlike Python the syntax for maths is actually nice and first class; and unlike MATLAB it is actually a usable programming language.** (Frames Catherine White)
-
-> I tried Numba, Cython and diving into deep Numpy lore, but no solution was satisfactory. With great resentment, I realized that for performance sensitive computing, there can be no such thing as a Python programmer: I could wrap my code in a Python cloak, but I would have to write all the hard stuff in C. A friend who had picked up Julia for theoretical physics taught me that **my frustration was common in scientific computing, and had a name: "The two language problem". Even better, it had a solution: Julia.** (Jakob Nissen)
-
-> I remember working on an R script that needed to loop through 33 million rows of data, doing a complicated lag/join/basket kind of computation that would take 18 hours to run. Literally during one of these 18 hour runs, I saw the Julia announcement post and was immediately desperate for the kind of simple performance it promised. **I read the initial manual over a weekend, rewrote my script the following Monday morning, and it ran in 5 minutes.** (Jacob Quinn)
-
-> What hooked me wasn't the speed (I was using Fortran before, which was more than adequate for that purpose), but **the composability of the whole ecosystem, which lets you easily leverage other people's work.** (Mosè Giordano)
-
-> My first interaction with Julia was in early 2019 when I was looking for alternative deep learning ecosystems as an undergrad and came across Flux. Having been scarred by unreliable pip/conda installs of Python and the mess of CUDA/cuDNN installations, **I was amazed by the ease of setup** and how soon I was able to get a network training. (Sharan Yalburgi)
-
-> By early 2020, I saw the 1.0 release a couple years back and decided to start learning Julia, and I was immediately impressed. By March 2020, I submitted my first pull request to JuliaLang/Julia and soon discovered that **Julia was a language that I could not only use but also help develop.** (Mark Kittisopikul)
-
-> Third, I use Julia because it is free, open source and because of its community. This motivates a constant peer reviewing process and **a democratic approach to software development, publicly accessible for anyone to join on GitHub**. The community guidelines and an active and welcoming user base bring together not only great coders but also kind and ambitious people (Elisabeth Roesch)
-
-> What really electrified me about Julia was that at some point Stefan or Jeff responded directly to one of my Discourse posts without calling me an idiot and explained some Julia esoterica with great calm (which was not my average internet forum experience). **That moment felt like lightning in a bottle: The creators of a programming language just hang out? And answer your questions? Online? For free???** That still seems to be a bit of a revolutionary openness to knowledge sharing. (Miguel Raz Guzmán Macedo)
-"""
-
 # ╔═╡ 5ddfc39f-8190-4e31-b524-8fb4c7aa858e
 md"""
+> Julia is now used by hundreds of thousands of people. It is taught at hundreds of universities and entire companies are being formed that build their software stacks on Julia. [...] We continue to be impressed every day by the **breadth of knowledge and kindness of spirit** of the people who have gravitated to Julia.
+
 [Why we use Julia, 10 years later](https://julialang.org/blog/2022/02/10years/) -- The Julia Community
 """
 
@@ -168,6 +149,11 @@ md"""
 - Growing community
 """
 
+# ╔═╡ fd7a38b1-a0fc-4917-9fe1-524ae47b9509
+md"""
+> What really electrified me about Julia was that at some point Stefan or Jeff responded directly to one of my Discourse posts without calling me an idiot and explained some Julia esoterica with great calm (which was not my average internet forum experience). **That moment felt like lightning in a bottle: The creators of a programming language just hang out? And answer your questions? Online? For free???** That still seems to be a bit of a revolutionary openness to knowledge sharing. (Miguel Raz Guzmán Macedo)
+"""
+
 # ╔═╡ 11a5ba78-c649-4846-a2a2-44fe9d97f047
 Resource("https://info.juliahub.com/hs-fs/hubfs/Annual%20growth%201.png?width=728&height=381&name=Annual%20growth%201.png")
 
@@ -179,6 +165,11 @@ md"""
 # ╔═╡ 2ce2824f-52b7-444e-950f-5370b4ba59e0
 md"""
 ## Some differences with Python
+"""
+
+# ╔═╡ 9aa75114-e4e9-49a3-b548-9cbdb1281154
+md"""
+> I believe my first impressions were: **Unlike Python the syntax for maths is actually nice and first class; and unlike MATLAB it is actually a usable programming language.** (Frames Catherine White)
 """
 
 # ╔═╡ 22b1bb59-f0de-4888-9b9c-fbaf0fab773c
@@ -406,14 +397,17 @@ All of the previous abstractions do not compromise efficiency, for two reasons. 
 """
 
 # ╔═╡ aa3e7729-3b2e-4824-92af-09d15894b521
-function myfillmat(x, n)
-	v = sqrt.(fill(n, x))
+function myfillmat(x)
+	v = sqrt.([x, x])
 	M = v * v'
 	return M
 end
 
+# ╔═╡ 71b601fe-ea0e-462b-b448-824d7f98e0f4
+myfillmat(3)
+
 # ╔═╡ 988269f3-1e76-4cc3-88a9-392620efc000
-@code_warntype myfillmat(2, 1)
+@code_warntype myfillmat(3)
 
 # ╔═╡ c9fe918e-6910-41f8-9042-a35e7fe1fd00
 md"""
@@ -476,6 +470,11 @@ md"""
 ## Conciseness
 """
 
+# ╔═╡ bf5b2d35-f8f8-4521-8114-855e5b649456
+md"""
+> I tried Numba, Cython and diving into deep Numpy lore, but no solution was satisfactory. With great resentment, I realized that for performance sensitive computing, there can be no such thing as a Python programmer: I could wrap my code in a Python cloak, but I would have to write all the hard stuff in C. A friend who had picked up Julia for theoretical physics taught me that **my frustration was common in scientific computing, and had a name: "The two language problem". Even better, it had a solution: Julia.** (Jakob Nissen)
+"""
+
 # ╔═╡ f8a0b5ec-1623-4f25-b6dc-c859dab34037
 md"""
 Julia is near Pareto-optimal in terms of lines of code vs efficiency.
@@ -487,6 +486,11 @@ Julia is near Pareto-optimal in terms of lines of code vs efficiency.
 # ╔═╡ f296fdb3-ae28-434c-9eac-64bb5603758d
 md"""
 ## Package management
+"""
+
+# ╔═╡ c1baa2fe-cfd1-4c8b-ba11-ba9d47f7e6ed
+md"""
+> My first interaction with Julia was in early 2019 when I was looking for alternative deep learning ecosystems as an undergrad and came across Flux. Having been scarred by unreliable pip/conda installs of Python and the mess of CUDA/cuDNN installations, **I was amazed by the ease of setup** and how soon I was able to get a network training. (Sharan Yalburgi)
 """
 
 # ╔═╡ 3c6e7597-5ae6-45b1-97e2-b1e535d446d4
@@ -563,6 +567,11 @@ md"""
 ## Easy to contribute
 """
 
+# ╔═╡ e6980037-69b2-4a6d-a5e5-d54a9490f143
+md"""
+> Third, I use Julia because it is free, open source and because of its community. This motivates a constant peer reviewing process and **a democratic approach to software development, publicly accessible for anyone to join on GitHub**. The community guidelines and an active and welcoming user base bring together not only great coders but also kind and ambitious people (Elisabeth Roesch)
+"""
+
 # ╔═╡ b62b5753-fb75-493e-ae37-75331384a747
 md"""
 - You can actually help improve the ecosystem and the language itself
@@ -578,9 +587,14 @@ md"""
 # What Julia is good at
 """
 
-# ╔═╡ d7987ebe-ad03-4b64-b975-572c5f5cbcdb
+# ╔═╡ a0311477-4420-48d3-a2e6-97b9ccf13d73
 md"""
-## Speed, episode 1: sums
+## Speed
+"""
+
+# ╔═╡ 69d9c9b1-e9f1-4538-9650-78a218f6a4e0
+md"""
+> I remember working on an R script that needed to loop through 33 million rows of data, doing a complicated lag/join/basket kind of computation that would take 18 hours to run. Literally during one of these 18 hour runs, I saw the Julia announcement post and was immediately desperate for the kind of simple performance it promised. **I read the initial manual over a weekend, rewrote my script the following Monday morning, and it ran in 5 minutes.** (Jacob Quinn)
 """
 
 # ╔═╡ 1c5e704a-8761-4aa6-bd50-df6c4350443d
@@ -593,6 +607,11 @@ md"""
 We would like to answer the question: *is Julia fast?*
 
 But to some extent this is a misleading question, since one can write slow code in any language... so let's try to answer something else instead: *can Julia be fast?*
+"""
+
+# ╔═╡ d7987ebe-ad03-4b64-b975-572c5f5cbcdb
+md"""
+### Sums
 """
 
 # ╔═╡ 5753e3a3-2499-4b9c-9c69-a6d400ea64db
@@ -778,7 +797,7 @@ end
 
 # ╔═╡ 47586eae-33d9-44e5-be6d-3ba5eedf1d5e
 md"""
-## Speed, episode 2: Vandermonde matrices
+### Vandermonde matrices
 """
 
 # ╔═╡ f5a0e40c-4171-4e19-b50a-e464122012ce
@@ -812,11 +831,9 @@ function vander(x::AbstractVector{T}) where T
     for j in 1:m
         V[j,1] = one(x[j])
     end
-    for i in 2:m
-        for j in 1:m
-            V[j,i] = x[j] * V[j,i-1]
-            end
-        end
+    for i in 2:m, j in 1:m
+		V[j,i] = x[j] * V[j,i-1]
+	end
     return V
 end
 
@@ -861,7 +878,12 @@ vander(["this", "is", "a", "test"])
 
 # ╔═╡ ddb62c34-eca9-4108-97c4-cacdf3a5de60
 md"""
-## Composability
+## Ecosystem & composability
+"""
+
+# ╔═╡ 92b95cf6-9f91-4fd3-bebf-89eed07845cb
+md"""
+> What hooked me wasn't the speed (I was using Fortran before, which was more than adequate for that purpose), but **the composability of the whole ecosystem, which lets you easily leverage other people's work.** (Mosè Giordano)
 """
 
 # ╔═╡ 4da69ddd-cff0-4aff-abb7-4e4d5d2bb04a
@@ -872,11 +894,13 @@ Packages designed separately, whose developers are unaware of each other, can wo
 # ╔═╡ 8f9d1a94-14b8-4566-a763-eefc7cb5c234
 YouTube("kc9HwsxE1OY")
 
-# ╔═╡ 489230aa-1d56-4ebc-a47e-b3d2a0aa5dec
-
+# ╔═╡ 5bbffef6-2d9e-4003-9511-147dab429cdb
+md"""
+### DifferentialEquations.jl
+"""
 
 # ╔═╡ df18c0a3-85dd-42bf-85c1-d190589ea27e
-md""" ## DifferentialEquations.jl
+md""" 
 [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/) is one of the largest packages in the Julia ecosystem.
 
 It allows to solve many, many different differential equations. Also works with CUDA.jl!
@@ -903,54 +927,63 @@ begin
 end
 
 # ╔═╡ fefcec89-7998-4f0d-8e0a-24c43c2dbd87
-md" ## FFT Convolutions"
-
-# ╔═╡ 3e1ae05c-8e7c-4da2-9f5e-444271b46738
-md"σ=$(@bind σ Slider(0.1:0.2:10, show_value=true))"
+md"""
+### FFT Convolutions
+"""
 
 # ╔═╡ 6043fb1b-376e-419e-b931-4bd32941e070
-begin
-	kernel = exp.(.-((-100:99)'.^2 .+ (-100:99).^2) ./2 ./ σ.^2);
-	kernel /= sum(kernel)
-end;
+function make_kernel(σ)
+	kernel = @. exp(-((-100:99)'^2 + (-100:99)^2)/2 / σ^2)
+	kernel ./= sum(kernel)
+	return kernel
+end
+
+# ╔═╡ 3e1ae05c-8e7c-4da2-9f5e-444271b46738
+@bind σ1 Slider(0.1:0.2:20, show_value=true)
 
 # ╔═╡ bc1b9361-2bd7-4747-9963-de95f6987549
-simshow(kernel)
+simshow(make_kernel(σ1))
 
 # ╔═╡ 7c278dca-f1a2-43a8-b641-e85183230226
-#img = box((200, 200), (100, 100)) .-  box((200, 200), (30, 30));
 img = Float32.(Gray.(testimage("mandril_color")[21:2:420, 51:2:450]));
 
 # ╔═╡ 19fd5bf8-c38c-4509-9808-bcfa497015f3
 simshow(img)
 
 # ╔═╡ f21d04af-28ef-40e1-8328-02fd76eef52f
-function conv(a,b)
-	return real(ifft(fft(a) .* fft(ifftshift(b))))
-end
+conv(a,b) = real(ifft(fft(a) .* fft(ifftshift(b))))
+
+# ╔═╡ b5499b9f-8bb2-4dbf-9b4f-e665d6b42fc8
+@bind σ2 Slider(0.1:0.2:20, show_value=true)
 
 # ╔═╡ 5e68ea8c-a504-45be-94c2-8a7c1d38aa28
-simshow(conv(img, kernel))
+let
+	kernel = make_kernel(σ2)
+	simshow(conv(img, kernel))
+end
 
 # ╔═╡ a8c5b30d-3964-4b76-b153-c67c2d2a0a82
-md""" ## Solving the inverse problem
+md"""
 [DeconvOptim.jl](https://github.com/roflmaostc/DeconvOptim.jl) is a deconvolution toolbox which is based on many packages.
 
 Zygote.jl for automatic differentiation, Optim.jl for optimisation, CUDA.jl for CUDA acceleration, FFTW.jl for FFTs, ...
 
 """
 
+# ╔═╡ b7a6b4ad-7e20-47b2-957b-09f053913ffa
+@bind σ3 Slider(0.1:0.2:20, show_value=true)
+
 # ╔═╡ 6893baf5-f5f7-43a0-8823-c42e6acb2bc8
-begin
-	img_deconv, res = DeconvOptim.deconvolution(img, ifftshift(kernel), iterations=10, regularizer=TV(), λ=0.01)
-	res
+let
+	kernel = make_kernel(σ3)
+	img_deconv, res = DeconvOptim.deconvolution(
+		img, ifftshift(kernel), iterations=10, regularizer=TV(), λ=0.01
+	)
+	simshow(img_deconv, set_one=false)
 end
 
-# ╔═╡ 5078e4cb-fb45-4066-9bb7-1b83575f5e52
-simshow(img_deconv, set_one=false)
-
 # ╔═╡ 025f06a6-470e-4f89-9147-fb54d40a23c6
-md" ## CUDA
+md"
 The same code running on a GPU would be simply:
 
 ```julia
@@ -1002,19 +1035,45 @@ md"""
 # Getting started
 """
 
-# ╔═╡ 9c7a0fa4-2df4-4422-bebb-aff60d4bd19f
+# ╔═╡ 0496e8fe-ec17-4530-83f4-caaed8e6411f
 md"""
-## Installing Julia
+## Installation
+
+To install the latest version of Julia, follow the [platform-specific instructions](https://julialang.org/downloads/platform/).
+If you need multiple versions of Julia to coexist on your system, or if you don't want to bother with manual updates, take a look at [juliaup](https://github.com/JuliaLang/juliaup) (which will soon be the default installer).
 """
 
-# ╔═╡ 17e3b26e-7db8-4928-ac83-85a8491fa90e
+# ╔═╡ c1bb0b00-d506-404c-82b1-70705f8a81d9
 md"""
-## Setting up VSCode
+## Learning the ropes
+
+The Julia website has a great list of [resources for beginners](https://julialang.org/learning/) and [tutorials](https://julialang.org/learning/tutorials/)., as well as free [MOOCs](https://juliaacademy.com/) contributed by the community.
+The official [Julia YouTube channel](https://www.youtube.com/c/TheJuliaLanguage/playlists) also boasts lots of introductory content.
+
+If you just need a quick refresher about syntax, this [cheat sheet](https://juliadocs.github.io/Julia-Cheat-Sheet/) is the place to go.
+For more involved questions, the primary source of knowledge is the [Julia manual](https://docs.julialang.org/en/v1/).
+And for the ultimate list of Julia resources, go to [Julia.jl](https://svaksha.github.io/Julia.jl/).
 """
 
-# ╔═╡ 0c8d7715-650b-4322-bb84-9c869f21c43c
+# ╔═╡ 4e6e13d2-3dbc-4432-b6b1-99ea7a456132
 md"""
-## Creating a project
+## Coding environment
+
+When developing in Julia, you need to select a comfortable code editor.
+The usual recommendation is [Visual Studio Code](https://code.visualstudio.com/) with the [Julia extension](https://www.julia-vscode.org/). There are plenty of other extensions for VS Code, and you will find one for whatever language you want to use (like [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) or [LaTeX](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop)).
+If you don't like Microsoft products, try [VS Codium](https://vscodium.com/) instead.
+
+Note that other IDEs also have [Julia support](https://github.com/JuliaEditorSupport).
+If you want something a bit lighter, here are two browser-based options:
+- [Pluto.jl](https://github.com/fonsp/Pluto.jl) is a Julia-based reactive notebook server (which we are using right now)
+- [IJulia.jl](https://github.com/JuliaLang/IJulia.jl) allows you to harness the power of [Jupyter](https://jupyter.org/). By the way, did you know that the "Ju" in "Jupyter" stands for Julia?
+"""
+
+# ╔═╡ 4f2e0816-42a0-4d63-bba0-19cd6d6c5ba1
+md"""
+## Getting help
+
+The Julia [community](https://julialang.org/community/) is very active and welcoming, so don't hesitate to [ask for help](https://julialang.org/about/help/)!
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -3519,16 +3578,17 @@ version = "1.4.1+0"
 # ╟─7b21340d-e638-4581-afa9-878fc0d3842f
 # ╟─fd55ba42-e17e-47f7-a629-1b0a3f2c2c74
 # ╟─a3ea30b3-0e2a-407d-b5ba-e577e63f9e8f
-# ╟─905281d4-ce29-47f1-9ca9-fd9fa76e1808
 # ╟─5ddfc39f-8190-4e31-b524-8fb4c7aa858e
 # ╟─36dcfe6a-d9bc-448f-a359-620261eaa6df
 # ╠═325d8c57-41d2-4fa8-843e-78c34dcfc341
 # ╠═064bec79-f5e3-4841-ac6e-68fddcb9df34
 # ╟─964afa90-73ce-42f3-bfcd-33688ccb7368
 # ╟─4be1270c-be70-4bdd-a015-ad92ff765124
+# ╟─fd7a38b1-a0fc-4917-9fe1-524ae47b9509
 # ╠═11a5ba78-c649-4846-a2a2-44fe9d97f047
 # ╟─38d6ab9e-3aa0-4890-b8a6-ae1bc3dd4d00
 # ╟─2ce2824f-52b7-444e-950f-5370b4ba59e0
+# ╟─9aa75114-e4e9-49a3-b548-9cbdb1281154
 # ╟─22b1bb59-f0de-4888-9b9c-fbaf0fab773c
 # ╠═9506fe42-d4a2-4055-8429-021ff5bebb8b
 # ╟─89e86e3a-674c-4c49-b59d-ddf09060e106
@@ -3583,6 +3643,7 @@ version = "1.4.1+0"
 # ╟─772d1148-5181-425e-b2ca-365aa2b5c2a4
 # ╟─e6429073-ffe9-4153-b90f-e55b27e2817d
 # ╠═aa3e7729-3b2e-4824-92af-09d15894b521
+# ╠═71b601fe-ea0e-462b-b448-824d7f98e0f4
 # ╠═988269f3-1e76-4cc3-88a9-392620efc000
 # ╟─c9fe918e-6910-41f8-9042-a35e7fe1fd00
 # ╠═b676581c-a8ec-44ae-a4d3-31efd57ef445
@@ -3598,8 +3659,10 @@ version = "1.4.1+0"
 # ╠═f95a0986-a5c5-4923-83ee-d3bf78a78720
 # ╟─2c9a2afb-3d34-4cc4-8c4e-c91efca24173
 # ╟─65c2d1ed-6fd1-47f1-b51b-269c7941ae2f
+# ╟─bf5b2d35-f8f8-4521-8114-855e5b649456
 # ╟─f8a0b5ec-1623-4f25-b6dc-c859dab34037
 # ╟─f296fdb3-ae28-434c-9eac-64bb5603758d
+# ╟─c1baa2fe-cfd1-4c8b-ba11-ba9d47f7e6ed
 # ╠═3c6e7597-5ae6-45b1-97e2-b1e535d446d4
 # ╟─08e40303-fe22-4c5b-a54b-66bcb3eaad2a
 # ╟─489823e8-1e5f-4493-a0c3-2dbbec842142
@@ -3612,12 +3675,15 @@ version = "1.4.1+0"
 # ╠═957ee6e2-25db-41c9-a5a9-8b8efb39e6ff
 # ╠═add00c30-7aa9-47f9-ac3b-4a1e97e23d09
 # ╟─8974d32f-4a0c-4ccb-b6c6-ff59b672c9a4
+# ╟─e6980037-69b2-4a6d-a5e5-d54a9490f143
 # ╟─b62b5753-fb75-493e-ae37-75331384a747
 # ╠═1dcc351e-0056-4372-bd4f-e8e7d15227de
 # ╟─31ce0ecf-69ea-41c6-970f-7117d8399ad2
-# ╟─d7987ebe-ad03-4b64-b975-572c5f5cbcdb
+# ╟─a0311477-4420-48d3-a2e6-97b9ccf13d73
+# ╟─69d9c9b1-e9f1-4538-9650-78a218f6a4e0
 # ╟─1c5e704a-8761-4aa6-bd50-df6c4350443d
 # ╟─3ecca9bd-bc70-460a-a795-28c4a6275ab9
+# ╟─d7987ebe-ad03-4b64-b975-572c5f5cbcdb
 # ╠═5753e3a3-2499-4b9c-9c69-a6d400ea64db
 # ╠═cba77bab-1d67-4557-8b95-9466f0be59ba
 # ╟─2d1e09dd-0348-4ac8-a663-0b799ec38162
@@ -3651,23 +3717,25 @@ version = "1.4.1+0"
 # ╟─e7052194-795d-47fc-afa6-fdde6e2c8d48
 # ╠═b95d3f00-5155-46e4-aac3-4906849ce98f
 # ╟─ddb62c34-eca9-4108-97c4-cacdf3a5de60
+# ╟─92b95cf6-9f91-4fd3-bebf-89eed07845cb
 # ╟─4da69ddd-cff0-4aff-abb7-4e4d5d2bb04a
 # ╠═8f9d1a94-14b8-4566-a763-eefc7cb5c234
-# ╠═489230aa-1d56-4ebc-a47e-b3d2a0aa5dec
+# ╟─5bbffef6-2d9e-4003-9511-147dab429cdb
 # ╟─df18c0a3-85dd-42bf-85c1-d190589ea27e
 # ╠═dc22ab5a-bd56-4d20-b1b5-d0409c8add73
 # ╠═e007e52e-82be-439e-be99-76f75cc7108c
 # ╟─fefcec89-7998-4f0d-8e0a-24c43c2dbd87
 # ╠═6043fb1b-376e-419e-b931-4bd32941e070
+# ╠═3e1ae05c-8e7c-4da2-9f5e-444271b46738
 # ╠═bc1b9361-2bd7-4747-9963-de95f6987549
-# ╟─3e1ae05c-8e7c-4da2-9f5e-444271b46738
 # ╠═7c278dca-f1a2-43a8-b641-e85183230226
 # ╟─19fd5bf8-c38c-4509-9808-bcfa497015f3
 # ╠═f21d04af-28ef-40e1-8328-02fd76eef52f
+# ╠═b5499b9f-8bb2-4dbf-9b4f-e665d6b42fc8
 # ╠═5e68ea8c-a504-45be-94c2-8a7c1d38aa28
 # ╟─a8c5b30d-3964-4b76-b153-c67c2d2a0a82
+# ╠═b7a6b4ad-7e20-47b2-957b-09f053913ffa
 # ╠═6893baf5-f5f7-43a0-8823-c42e6acb2bc8
-# ╟─5078e4cb-fb45-4066-9bb7-1b83575f5e52
 # ╟─025f06a6-470e-4f89-9147-fb54d40a23c6
 # ╟─7a18486a-847a-417b-a28e-463df434640e
 # ╟─3e5557d3-4e9f-488b-8725-b396a02fc18a
@@ -3676,8 +3744,9 @@ version = "1.4.1+0"
 # ╟─9c250234-9e87-4862-9ad3-7e5d7907f7f4
 # ╟─beb4699b-50e6-4e04-b227-f33c87defe46
 # ╟─e16be48e-d596-4506-a0e8-fc1f5c48d0d5
-# ╟─9c7a0fa4-2df4-4422-bebb-aff60d4bd19f
-# ╟─17e3b26e-7db8-4928-ac83-85a8491fa90e
-# ╟─0c8d7715-650b-4322-bb84-9c869f21c43c
+# ╟─0496e8fe-ec17-4530-83f4-caaed8e6411f
+# ╟─c1bb0b00-d506-404c-82b1-70705f8a81d9
+# ╟─4e6e13d2-3dbc-4432-b6b1-99ea7a456132
+# ╟─4f2e0816-42a0-4d63-bba0-19cd6d6c5ba1
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
