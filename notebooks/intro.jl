@@ -992,9 +992,19 @@ md"""
 let
 	kernel = make_kernel(σ3)
 	img_deconv, res = DeconvOptim.deconvolution(
-		img, ifftshift(kernel), iterations=10, regularizer=TV(), λ=0.01
-	)
+		img, ifftshift(kernel), iterations=10, regularizer=TV(), λ=0.01)
+
 	simshow(img_deconv, set_one=false)
+end
+
+# ╔═╡ 9a0f8fe3-8292-4d23-8d38-8c192746aed1
+let
+	kernel = make_kernel(1)
+	img_c, kernel_c = CuArray(img), CuArray(kernel)
+	img_deconv_c, res_c = DeconvOptim.deconvolution(
+		img_c, ifftshift(kernel_c), regularizer=nothing, iterations=10)
+
+	simshow(Array(img_deconv_c), set_one=false)
 end
 
 # ╔═╡ 7a18486a-847a-417b-a28e-463df434640e
@@ -3801,6 +3811,7 @@ version = "1.4.1+0"
 # ╟─a8c5b30d-3964-4b76-b153-c67c2d2a0a82
 # ╠═b7a6b4ad-7e20-47b2-957b-09f053913ffa
 # ╠═6893baf5-f5f7-43a0-8823-c42e6acb2bc8
+# ╠═9a0f8fe3-8292-4d23-8d38-8c192746aed1
 # ╟─7a18486a-847a-417b-a28e-463df434640e
 # ╟─3e5557d3-4e9f-488b-8725-b396a02fc18a
 # ╟─30d89ed0-f1a5-4537-9085-b133de9c81a4
