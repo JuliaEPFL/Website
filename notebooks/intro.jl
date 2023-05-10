@@ -20,6 +20,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ 8edb1e45-934a-453c-a5e2-4e5a7847767a
+# ╠═╡ show_logs = false
 begin
 	using BenchmarkTools
 	using CondaPkg
@@ -54,9 +55,6 @@ begin
 	const np = pyimport("numpy")
 end;
 
-# ╔═╡ 45e2bcc4-8fec-4305-9971-5a5a23fd91ff
-ChooseDisplayMode()
-
 # ╔═╡ 690d96f5-c8e6-4622-9e7a-e5914b366c5b
 md"""
 !!! danger "JuliaEPFL"
@@ -66,13 +64,16 @@ md"""
 # ╔═╡ 29ba495d-3d4c-4c77-b65d-97417ce59eeb
 LocalResource("../assets/qr.png")
 
+# ╔═╡ 45e2bcc4-8fec-4305-9971-5a5a23fd91ff
+ChooseDisplayMode()
+
+# ╔═╡ 85038100-6677-48e3-856c-8222735159ad
+TableOfContents()
+
 # ╔═╡ 7ee9e56b-99bc-4d12-8788-c9920948e4fc
 md"""
 This demo notebook has A LOT of dependencies, so the first run is gonna take a while. Grab a cup of coffee.
 """
-
-# ╔═╡ 85038100-6677-48e3-856c-8222735159ad
-TableOfContents()
 
 # ╔═╡ dd796fa6-fa31-4559-9855-f6ade6a6c510
 md"""
@@ -156,11 +157,6 @@ md"""
 - Introductory tutorials
 - Remote option
 - Growing community
-"""
-
-# ╔═╡ fd7a38b1-a0fc-4917-9fe1-524ae47b9509
-md"""
-> What really electrified me about Julia was that at some point Stefan or Jeff responded directly to one of my Discourse posts without calling me an idiot and explained some Julia esoterica with great calm (which was not my average internet forum experience). **That moment felt like lightning in a bottle: The creators of a programming language just hang out? And answer your questions? Online? For free???** That still seems to be a bit of a revolutionary openness to knowledge sharing. (Miguel Raz Guzmán Macedo)
 """
 
 # ╔═╡ 11a5ba78-c649-4846-a2a2-44fe9d97f047
@@ -591,6 +587,11 @@ md"""
 # ╔═╡ 1dcc351e-0056-4372-bd4f-e8e7d15227de
 Resource("https://imgs.xkcd.com/comics/code_quality.png")
 
+# ╔═╡ 330842c6-f933-428d-a097-5d81d2e31041
+md"""
+> What really electrified me about Julia was that at some point Stefan or Jeff responded directly to one of my Discourse posts without calling me an idiot and explained some Julia esoterica with great calm (which was not my average internet forum experience). **That moment felt like lightning in a bottle: The creators of a programming language just hang out? And answer your questions? Online? For free???** That still seems to be a bit of a revolutionary openness to knowledge sharing. (Miguel Raz Guzmán Macedo)
+"""
+
 # ╔═╡ 31ce0ecf-69ea-41c6-970f-7117d8399ad2
 md"""
 # What Julia is good at
@@ -778,12 +779,19 @@ The naive version (like the one we wrote in Julia) would look something like thi
 """
 
 # ╔═╡ 0355ed94-05d1-4510-811d-6a0870caa215
-pysum(A) = pyexec("""
-s = 0.0
-for a in A:
-	s += a
-s
-""", Main, (A=A,))
+pysum(A) = pyexec(
+	@NamedTuple{s::Float64},
+	"""
+	s = 0.0
+	for a in A:
+		s += a
+	""",
+	Main,
+	(A=A,)
+)
+
+# ╔═╡ 2c1560ec-dac7-4737-bdc2-d7298b0bcb7e
+pysum([1, 2, 3])
 
 # ╔═╡ 2f095034-9e3d-4f27-97f4-96cbeadbe681
 begin
@@ -3667,7 +3675,6 @@ version = "1.4.1+0"
 # ╠═064bec79-f5e3-4841-ac6e-68fddcb9df34
 # ╟─964afa90-73ce-42f3-bfcd-33688ccb7368
 # ╟─4be1270c-be70-4bdd-a015-ad92ff765124
-# ╟─fd7a38b1-a0fc-4917-9fe1-524ae47b9509
 # ╠═11a5ba78-c649-4846-a2a2-44fe9d97f047
 # ╟─38d6ab9e-3aa0-4890-b8a6-ae1bc3dd4d00
 # ╟─2ce2824f-52b7-444e-950f-5370b4ba59e0
@@ -3761,6 +3768,7 @@ version = "1.4.1+0"
 # ╟─e6980037-69b2-4a6d-a5e5-d54a9490f143
 # ╟─b62b5753-fb75-493e-ae37-75331384a747
 # ╠═1dcc351e-0056-4372-bd4f-e8e7d15227de
+# ╟─330842c6-f933-428d-a097-5d81d2e31041
 # ╟─31ce0ecf-69ea-41c6-970f-7117d8399ad2
 # ╟─a0311477-4420-48d3-a2e6-97b9ccf13d73
 # ╟─69d9c9b1-e9f1-4538-9650-78a218f6a4e0
@@ -3785,6 +3793,7 @@ version = "1.4.1+0"
 # ╠═449130fa-6a73-42a7-93b9-9adbca17e37e
 # ╟─f0fdd605-6f29-4f5b-b9bd-d03554273854
 # ╠═0355ed94-05d1-4510-811d-6a0870caa215
+# ╠═2c1560ec-dac7-4737-bdc2-d7298b0bcb7e
 # ╠═2f095034-9e3d-4f27-97f4-96cbeadbe681
 # ╟─0f6c85be-7d32-4e0c-b085-a04227570a46
 # ╠═b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
