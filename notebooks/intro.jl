@@ -47,7 +47,7 @@ begin
 	using TestImages
 	using Symbolics
 	using Unitful
-	
+
 	# Python setup
 	CondaPkg.add("numpy")
 	pyimport("sys").path.append(".")
@@ -57,7 +57,16 @@ end;
 # ╔═╡ 45e2bcc4-8fec-4305-9971-5a5a23fd91ff
 ChooseDisplayMode()
 
+# ╔═╡ 690d96f5-c8e6-4622-9e7a-e5914b366c5b
+md"""
+!!! danger "JuliaEPFL"
+	You will find this notebook and more on our organization's website [go.epfl.ch/julia](https://go.epfl.ch/julia)
+"""
+
 # ╔═╡ 29ba495d-3d4c-4c77-b65d-97417ce59eeb
+LocalResource("../assets/qr.png")
+
+# ╔═╡ 7ee9e56b-99bc-4d12-8788-c9920948e4fc
 md"""
 This demo notebook has A LOT of dependencies, so the first run is gonna take a while. Grab a cup of coffee.
 """
@@ -651,7 +660,7 @@ begin
 	# Compile to a shared library (with fast maths and machine-specific)
 	const Clib = tempname()
 	open(`gcc -fPIC -O3 -march=native -xc -shared -ffast-math -o $(Clib * "."  * Libdl.dlext) -`, "w") do f
-    	print(f, code) 
+    	print(f, code)
 	end
 
 	# define a Julia function that calls the C function:
@@ -675,13 +684,13 @@ begin
 	code_vectorised = """
 	#include <stddef.h>
 	#include <immintrin.h>
-	
+
 	double c_sum_vector(size_t n, double *v)
 	{
 	    size_t i;
 	    double result;
 	    double tmp[4] __attribute__ ((aligned(64)));
-	
+
 	    __m256d sums1 = _mm256_setzero_pd();
 	    __m256d sums2 = _mm256_setzero_pd();
 	    for ( i = 0; i + 7 < n; i += 8 )
@@ -690,17 +699,17 @@ begin
 	        sums2 = _mm256_add_pd( sums2, _mm256_loadu_pd(v+i+4) );
 	    }
 	    _mm256_store_pd( tmp, _mm256_add_pd(sums1, sums2) );
-	
-	    return tmp[0] + tmp[1] + tmp[2] + tmp[3]; 
+
+	    return tmp[0] + tmp[1] + tmp[2] + tmp[3];
 	}
 	"""
-	
+
 	# Compile to a shared library (with fast maths and machine-specific)
 	const Clib_vectorised = tempname()
 	open(`gcc -fPIC -O2 -march=native -xc -shared -ffast-math -o $(Clib_vectorised * "." * Libdl.dlext) -`, "w") do f
-	    print(f, code_vectorised) 
+	    print(f, code_vectorised)
 	end
-	
+
 	# define a Julia function that calls the C function:
 	c_sum_vectorised(v::Array{Float64}) = ccall(("c_sum_vector", Clib_vectorised), Float64, (Csize_t, Ptr{Float64}), length(v), v)
 end
@@ -807,7 +816,7 @@ md"""
 (modified from [Steven's Julia intro](https://web.mit.edu/18.06/www/Fall17/1806/julia/Julia-intro.pdf))
 
 $$\begin{align}
-\texttt{vander}\Big(\ \begin{bmatrix}\alpha_{1} \\ \alpha_{2} \\ \vdots \\  \alpha_{m}\end{bmatrix} \ \Big) \qquad = \qquad 
+\texttt{vander}\Big(\ \begin{bmatrix}\alpha_{1} \\ \alpha_{2} \\ \vdots \\  \alpha_{m}\end{bmatrix} \ \Big) \qquad = \qquad
 \begin{bmatrix}1&\alpha _{1}&\alpha _{1}^{2}&\dots &\alpha _{1}^{n-1}\\1&\alpha _{2}&\alpha _{2}^{2}&\dots &\alpha _{2}^{n-1}\\1&\alpha _{3}&\alpha _{3}^{2}&\dots &\alpha _{3}^{n-1}\\\vdots &\vdots &\vdots &\ddots &\vdots \\1&\alpha _{m}&\alpha _{m}^{2}&\dots &\alpha _{m}^{n-1}\end{bmatrix}
 \end{align}$$
 """
@@ -901,7 +910,7 @@ md"""
 """
 
 # ╔═╡ df18c0a3-85dd-42bf-85c1-d190589ea27e
-md""" 
+md"""
 [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/) is one of the largest packages in the Julia ecosystem.
 It can solve many different ODEs, including on GPUs!
 """
@@ -1025,7 +1034,7 @@ md"""
 # ╔═╡ beb4699b-50e6-4e04-b227-f33c87defe46
 md"""
 - No big company supporting it ($\neq$ PyTorch, Tensorflow, JAX)
-- Packages and Julia versions are updating quickly 
+- Packages and Julia versions are updating quickly
 - Recent discussions:
   - [State of machine learning (2022)](https://discourse.julialang.org/t/state-of-machine-learning-in-julia/74385/)
   - [State of automatic differentiation (2023)](https://discourse.julialang.org/t/whats-the-state-of-automatic-differentiation-in-julia-january-2023/92473/)
@@ -3628,10 +3637,12 @@ version = "1.4.1+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═45e2bcc4-8fec-4305-9971-5a5a23fd91ff
+# ╟─690d96f5-c8e6-4622-9e7a-e5914b366c5b
 # ╟─29ba495d-3d4c-4c77-b65d-97417ce59eeb
+# ╟─45e2bcc4-8fec-4305-9971-5a5a23fd91ff
+# ╟─85038100-6677-48e3-856c-8222735159ad
+# ╟─7ee9e56b-99bc-4d12-8788-c9920948e4fc
 # ╠═8edb1e45-934a-453c-a5e2-4e5a7847767a
-# ╠═85038100-6677-48e3-856c-8222735159ad
 # ╟─dd796fa6-fa31-4559-9855-f6ade6a6c510
 # ╟─5c1790e6-4b0d-41a3-9a73-a56cce53a4f5
 # ╟─4d7fdbcd-e0ef-4801-8c57-a18e930fc273
