@@ -23,6 +23,7 @@ end
 begin
 	using BenchmarkTools
 	using CondaPkg
+	using CUDA
 	using DifferentialEquations
 	using DeconvOptim
 	using FFTW
@@ -51,7 +52,6 @@ begin
 	CondaPkg.add("numpy")
 	pyimport("sys").path.append(".")
 	const np = pyimport("numpy")
-	const pyutils = pyimport("utils")
 end;
 
 # ╔═╡ 45e2bcc4-8fec-4305-9971-5a5a23fd91ff
@@ -766,18 +766,19 @@ end
 md"""
 But that's not real Python, that's C in disguise.
 The naive version (like the one we wrote in Julia) would look something like this:
-```python
-def pysum(A):
-    s = 0.0
-    for a in A:
-        s += a
-    return s
-```
 """
+
+# ╔═╡ 0355ed94-05d1-4510-811d-6a0870caa215
+pysum(A) = pyexec("""
+s = 0.0
+for a in A:
+	s += a
+s
+""", Main, (A=A,))
 
 # ╔═╡ 2f095034-9e3d-4f27-97f4-96cbeadbe681
 begin
-	bench6 = @benchmark ($(pyutils.pysum))($vlarge)
+	bench6 = @benchmark (pysum)($vlarge)
 	times["Python (naive)"] = minimum(bench6.times) / 1e6
 	bench6
 end
@@ -896,14 +897,13 @@ YouTube("kc9HwsxE1OY")
 
 # ╔═╡ 5bbffef6-2d9e-4003-9511-147dab429cdb
 md"""
-### DifferentialEquations.jl
+### Numerical analysis
 """
 
 # ╔═╡ df18c0a3-85dd-42bf-85c1-d190589ea27e
 md""" 
 [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/) is one of the largest packages in the Julia ecosystem.
-
-It allows to solve many, many different differential equations. Also works with CUDA.jl!
+It can solve many different ODEs, including on GPUs!
 """
 
 # ╔═╡ dc22ab5a-bd56-4d20-b1b5-d0409c8add73
@@ -928,7 +928,7 @@ end
 
 # ╔═╡ fefcec89-7998-4f0d-8e0a-24c43c2dbd87
 md"""
-### FFT Convolutions
+### Convolutions
 """
 
 # ╔═╡ 6043fb1b-376e-419e-b931-4bd32941e070
@@ -962,11 +962,26 @@ let
 	simshow(conv(img, kernel))
 end
 
+# ╔═╡ d5892578-adca-41e6-8c1c-cdd89cc19193
+md"""
+To run this on a GPU, simply replace `Array` with `CuArray`. _No other change required._
+"""
+
+# ╔═╡ 626c3284-3935-43b8-b094-1a6d49e31650
+let
+	kernel = make_kernel(1)
+	img_c, kernel_c = CuArray(img), CuArray(kernel)
+	CUDA.@time CUDA.@sync res_c = conv(img_c, kernel_c)
+	simshow(Array(res_c))
+end
+
 # ╔═╡ a8c5b30d-3964-4b76-b153-c67c2d2a0a82
 md"""
-[DeconvOptim.jl](https://github.com/roflmaostc/DeconvOptim.jl) is a deconvolution toolbox which is based on many packages.
-
-Zygote.jl for automatic differentiation, Optim.jl for optimisation, CUDA.jl for CUDA acceleration, FFTW.jl for FFTs, ...
+[DeconvOptim.jl](https://github.com/roflmaostc/DeconvOptim.jl) is a deconvolution toolbox which is based on many packages:
+- Zygote.jl for automatic differentiation
+- Optim.jl for optimisation
+- CUDA.jl for CUDA acceleration
+- FFTW.jl for FFTs, ...
 
 """
 
@@ -981,20 +996,6 @@ let
 	)
 	simshow(img_deconv, set_one=false)
 end
-
-# ╔═╡ 025f06a6-470e-4f89-9147-fb54d40a23c6
-md"
-The same code running on a GPU would be simply:
-
-```julia
-using CUDA
-
-img_c, kernel_c = CuArray(img), CuArray(kernel)
-
-CUDA.@time CUDA.@sync conv(img_c, kernel_c)
-```
-
-"
 
 # ╔═╡ 7a18486a-847a-417b-a28e-463df434640e
 md"""
@@ -1080,6 +1081,7 @@ The Julia [community](https://julialang.org/community/) is very active and welco
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 DeconvOptim = "03e7cd2f-1a03-4ea9-b59b-760a446df67f"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
@@ -1107,6 +1109,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 BenchmarkTools = "~1.3.2"
+CUDA = "~4.2.0"
 CondaPkg = "~0.2.18"
 DeconvOptim = "~0.7.1"
 DifferentialEquations = "~7.7.0"
@@ -1132,9 +1135,9 @@ Unitful = "~1.13.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.0-rc3"
+julia_version = "1.9.0"
 manifest_format = "2.0"
-project_hash = "c05bba219300a345c5a996f82c4b5a3e0dddcd74"
+project_hash = "57517cca999150f6a0fe0aaffbe4b18c071fc7d3"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1220,6 +1223,12 @@ version = "0.8.18"
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
+[[deps.Atomix]]
+deps = ["UnsafeAtomics"]
+git-tree-sha1 = "c06a868224ecba914baa6942988e2f2aade419be"
+uuid = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+version = "0.1.0"
+
 [[deps.AxisAlgorithms]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
 git-tree-sha1 = "66771c8d21c8ff5e3a93379480a2307ac36863f7"
@@ -1231,6 +1240,12 @@ deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
 git-tree-sha1 = "1dd4d9f5beebac0c03446918741b1a03dc5e5788"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.6"
+
+[[deps.BFloat16s]]
+deps = ["LinearAlgebra", "Printf", "Random", "Test"]
+git-tree-sha1 = "dbf84058d0a8cbbadee18d25cf606934b22d7c66"
+uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
+version = "0.4.2"
 
 [[deps.BandedMatrices]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra", "SnoopPrecompile", "SparseArrays"]
@@ -1297,6 +1312,30 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e329286945d0cfc04456972ea732551869af1cfc"
 uuid = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
 version = "1.0.1+0"
+
+[[deps.CUDA]]
+deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Preferences", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "UnsafeAtomicsLLVM"]
+git-tree-sha1 = "280893f920654ebfaaaa1999fbd975689051f890"
+uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
+version = "4.2.0"
+
+[[deps.CUDA_Driver_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
+git-tree-sha1 = "498f45593f6ddc0adff64a9310bb6710e851781b"
+uuid = "4ee394cb-3365-5eb0-8335-949819d2adfc"
+version = "0.5.0+1"
+
+[[deps.CUDA_Runtime_Discovery]]
+deps = ["Libdl"]
+git-tree-sha1 = "bcc4a23cbbd99c8535a5318455dcf0f2546ec536"
+uuid = "1af6417a-86b4-443c-805f-a4643ffb695f"
+version = "0.2.2"
+
+[[deps.CUDA_Runtime_jll]]
+deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
+git-tree-sha1 = "5248d9c45712e51e27ba9b30eebec65658c6ce29"
+uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+version = "0.6.0+0"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -1757,6 +1796,12 @@ git-tree-sha1 = "1cd7f0af1aa58abc02ea1d872953a97359cb87fa"
 uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
 version = "0.1.4"
 
+[[deps.GPUCompiler]]
+deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Scratch", "TimerOutputs", "UUIDs"]
+git-tree-sha1 = "e9a9173cd77e16509cdf9c1663fda19b22a518b7"
+uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "0.19.3"
+
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
 git-tree-sha1 = "efaac003187ccc71ace6c755b197284cd4811bfe"
@@ -2052,6 +2097,12 @@ deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
 git-tree-sha1 = "764164ed65c30738750965d55652db9c94c59bfe"
 uuid = "ef3ab10e-7fda-4108-b977-705223b18434"
 version = "0.4.0"
+
+[[deps.KernelAbstractions]]
+deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "PrecompileTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
+git-tree-sha1 = "47be64f040a7ece575c2b5f53ca6da7b548d69f4"
+uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+version = "0.9.4"
 
 [[deps.Krylov]]
 deps = ["LinearAlgebra", "Printf", "SparseArrays"]
@@ -3272,6 +3323,17 @@ git-tree-sha1 = "d5f4ec8c22db63bd3ccb239f640e895cfde145aa"
 uuid = "a7c27f48-0311-42f6-a7f8-2c11e75eb415"
 version = "0.1.2"
 
+[[deps.UnsafeAtomics]]
+git-tree-sha1 = "6331ac3440856ea1988316b46045303bef658278"
+uuid = "013be700-e6cd-48c3-b4a1-df204f14c38f"
+version = "0.2.1"
+
+[[deps.UnsafeAtomicsLLVM]]
+deps = ["LLVM", "UnsafeAtomics"]
+git-tree-sha1 = "ea37e6066bf194ab78f4e747f5245261f17a7175"
+uuid = "d80eeb9a-aca5-4d75-85e5-170c8b632249"
+version = "0.1.2"
+
 [[deps.UnsafePointers]]
 git-tree-sha1 = "c81331b3b2e60a982be57c046ec91f599ede674a"
 uuid = "e17b2a0c-0bdf-430a-bd0c-3a23cae4ff39"
@@ -3701,6 +3763,7 @@ version = "1.4.1+0"
 # ╟─b4245307-e080-4923-b540-b9b3288cfae4
 # ╠═449130fa-6a73-42a7-93b9-9adbca17e37e
 # ╟─f0fdd605-6f29-4f5b-b9bd-d03554273854
+# ╠═0355ed94-05d1-4510-811d-6a0870caa215
 # ╠═2f095034-9e3d-4f27-97f4-96cbeadbe681
 # ╟─0f6c85be-7d32-4e0c-b085-a04227570a46
 # ╠═b6a35fc7-c2f9-4d39-baf8-10d8a94996d6
@@ -3733,10 +3796,11 @@ version = "1.4.1+0"
 # ╠═f21d04af-28ef-40e1-8328-02fd76eef52f
 # ╠═b5499b9f-8bb2-4dbf-9b4f-e665d6b42fc8
 # ╠═5e68ea8c-a504-45be-94c2-8a7c1d38aa28
+# ╟─d5892578-adca-41e6-8c1c-cdd89cc19193
+# ╠═626c3284-3935-43b8-b094-1a6d49e31650
 # ╟─a8c5b30d-3964-4b76-b153-c67c2d2a0a82
 # ╠═b7a6b4ad-7e20-47b2-957b-09f053913ffa
 # ╠═6893baf5-f5f7-43a0-8823-c42e6acb2bc8
-# ╟─025f06a6-470e-4f89-9147-fb54d40a23c6
 # ╟─7a18486a-847a-417b-a28e-463df434640e
 # ╟─3e5557d3-4e9f-488b-8725-b396a02fc18a
 # ╟─30d89ed0-f1a5-4537-9085-b133de9c81a4

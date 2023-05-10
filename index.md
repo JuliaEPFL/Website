@@ -2,9 +2,14 @@ Welcome to the website of JuliaEPFL, a community of Julia language enthusiasts b
 
 # Events
 
-| When              | Where?                                             | What?                 | Register                                                     | Resources                        |
-| ----------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------ | -------------------------------- |
-| 10.05.23 at 18:15 | BC410 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [here](https://memento.epfl.ch/event/introduction-to-julia/) | [notebook](notebooks/intro.html) |
+| When              | Where?                                             | What?                 | Register                                                           | Resources                        |
+| ----------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| 10.05.23 at 18:15 | BC420 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [Event page](https://memento.epfl.ch/event/introduction-to-julia/) | [Notebook](notebooks/intro.html) |
+
+# Mailing list
+
+If you want to be informed of future events, please subscribe to our mailing list by sending any email (content and subject don't matter) to [julia-subscribe@listes.epfl.ch](mailto:julia-subscribe@listes.epfl.ch).
+For more information about the mailing list, including how to unsubscribe, see [this documentation](https://listes.epfl.ch/doc_en.cgi?liste=julia).
 
 # Members
 
