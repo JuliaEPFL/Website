@@ -2,9 +2,9 @@
 # v0.19.42
 
 #> [frontmatter]
-#> title = "Intro to Julia"
-#> date = "2023-05-10"
-#> description = "First session of the JuliaEPFL meetup"
+#> title = "Introduction to Julia"
+#> date = "2024-05-29"
+#> description = "Second session of the JuliaEPFL meetup"
 
 using Markdown
 using InteractiveUtils
