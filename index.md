@@ -4,8 +4,8 @@ Welcome to the website of JuliaEPFL, a community of Julia language enthusiasts b
 
 | When              | Where?                                             | What?                 | Register                                                           | Resources                        |
 | ----------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------------ | -------------------------------- |
-| 10.05.23 at 18:15 | BC420 / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [Event page](https://memento.epfl.ch/event/introduction-to-julia/) | [Notebook](notebooks/intro.html), [Video](https://epfl.zoom.us/rec/share/NeZF7ooqgZ35g0H9N-adXe-RML26av_758fsEozevuqi227Jw3ov2fnIQVvSVLyr.fE5v5FHLTrYc8GRG) |
-| 29.05.24 at 18:15 | [BC420](https://plan.epfl.ch/?room==BC%20420) | Introduction to Julia | [Register](https://lu.ma/lauzhack-julia?tk=RQPoa2)| TBA|
+| 10.05.23 at 18:15 | [BC420](https://plan.epfl.ch/?room==BC%20420) / [Zoom](https://epfl.zoom.us/j/68892870159) | Introduction to Julia | [Event page](https://memento.epfl.ch/event/introduction-to-julia/) | [Notebook](notebooks/intro.html), [Video](https://epfl.zoom.us/rec/share/NeZF7ooqgZ35g0H9N-adXe-RML26av_758fsEozevuqi227Jw3ov2fnIQVvSVLyr.fE5v5FHLTrYc8GRG) |
+| 29.05.24 at 18:15 | [BC420](https://plan.epfl.ch/?room==BC%20420) | Introduction to Julia, second edition | [Event page](https://memento.epfl.ch/event/introduction-to-julia-2/)| [Notebook](notebooks/intro-2024.html) |
 
 # Mailing list
 
