@@ -20,7 +20,7 @@ TableOfContents()
 ImageShow.simshow(x::CuArray; kwargs...) = simshow(Array(x); kwargs...)
 
 # ╔═╡ 8f05639c-310e-4d53-b342-f2da13a971cc
-use_CUDA = Ref(true)
+use_CUDA = Ref(true && CUDA.functional())
 
 # ╔═╡ 4aff1c79-e214-494e-a1d3-5a52224baeba
 md" ## CUDA
