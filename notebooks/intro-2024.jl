@@ -477,7 +477,7 @@ md"""
 md"""
 Julia is near Pareto-optimal in terms of lines of code vs efficiency.
 
-- [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/julia-python3.html)
+- [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/box-plot-summary-charts.html)
 - [Energy efficiency of programming languages](https://sites.google.com/view/energy-efficiency-languages/updated-functional-results-2020)
 """
 
