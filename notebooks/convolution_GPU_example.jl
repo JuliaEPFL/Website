@@ -26,7 +26,7 @@ use_CUDA = Ref(true)
 md" ## CUDA
 CUDA accelerates operations on large arrays easily by 5-20 times!
 
-Your CUDA is functional: **$(use_CUDA[])**
+**$(use_CUDA[] ? \" Your CUDA is functional\" : \" Your CUDA is not functional  \")**
 "
 
 # ╔═╡ dfe77e52-81ef-4019-866a-070a713a65cf
@@ -97,7 +97,7 @@ md"# Do the optimization"
 initial_guess = togoc(zeros(Float32, size(X)));
 
 # ╔═╡ ef2206bf-3e18-4152-80c2-455228785d2f
-@mytime res = Optim.optimize(loss, gradient!, initial_guess, LBFGS(), Optim.Options(iterations=5))
+@mytime res = Optim.optimize(loss, gradient!, initial_guess, LBFGS(), Optim.Options(iterations=20))
 
 # ╔═╡ 9c95e2f6-4201-4754-a363-510203d6e3bb
 [simshow(X) simshow(ones((512, 10))) simshow(Y) simshow(ones((512, 10))) simshow(res.minimizer) ]
