@@ -45,7 +45,7 @@ $$Y = X * h$$
 
 To solve this equation, we can write this as a general inverse problem, where we want to find a minimum for the loss function $\mathcal{L}$:
 
-$$\mathcal{L} = \sum_i |Y_i - (\hat X * h)_i|$$
+$$\mathcal{L} = \sum_i |Y_i - (\hat X * h)_i|^2$$
 
 We then use gradient descent and automatic differentiation to find a solution to this deconvolution problem.
 "
@@ -76,7 +76,7 @@ end;
 md"# Create measurement"
 
 # ╔═╡ 8e8a3e4c-63f8-4898-885a-ba87ef207a1f
-Y = conv(X, h) .+ togoc(0.01f0 .* randn(Float32, size(X)));
+Y = conv(X, h) .+ togoc(0.1f0 .* randn(Float32, size(X)));
 
 # ╔═╡ d1ab09a8-2baf-471e-8185-337ac5bd693c
 [simshow(X) simshow(ones((512, 10))) simshow(h) simshow(ones((512, 10))) simshow(Y) ]
@@ -97,10 +97,39 @@ md"# Do the optimization"
 initial_guess = togoc(zeros(Float32, size(X)));
 
 # ╔═╡ ef2206bf-3e18-4152-80c2-455228785d2f
-@mytime res = Optim.optimize(loss, gradient!, initial_guess, LBFGS(), Optim.Options(iterations=30))
+@mytime res = Optim.optimize(loss, gradient!, initial_guess, LBFGS(), Optim.Options(iterations=5))
 
 # ╔═╡ 9c95e2f6-4201-4754-a363-510203d6e3bb
 [simshow(X) simshow(ones((512, 10))) simshow(Y) simshow(ones((512, 10))) simshow(res.minimizer) ]
+
+# ╔═╡ 8305c596-c3e7-445c-8465-81deb8c8d661
+md"# Add regularizer
+
+As we have seen, optimizing too many iterations, noise will be amplified.
+To avoid this, we can add a regularizing term to the optimization:
+
+
+$$f_{i,j} = (\hat X * h)_{i,j}$$
+
+$$\mathcal{L} = \sum_{i,j} |Y_{i,j} - f_{i,j}|^2 + \lambda \sqrt{\varepsilon + |f_{i,j}-f_{i,j+1}|^2 + |f_{i+1,j}-f_{i,j}|^2}$$
+
+where $\varepsilon$ is a small value to make this term differentiable. $\lambda$ is the weight factor of the regularizer.
+"
+
+# ╔═╡ 9136ca18-c72d-4afd-ba7d-770f28c6a612
+reg(x) = sum(sqrt.(1f-20 .+ (x .- circshift(x, (1,0))).^2 .+  (x .- circshift(x, (0,1))).^2))
+
+# ╔═╡ 113007e5-c7e3-4267-8b64-faa72aab0ed7
+loss_with_reg(x) = loss(x) + 1f-2 * reg(x)
+
+# ╔═╡ 45a3021f-6d72-418f-a076-e51ab798380e
+gradient_with_reg!(G, x) = DifferentiationInterface.gradient!(loss_with_reg, G, AutoZygote(), x)
+
+# ╔═╡ c62d11b2-7a07-4598-ac76-ab6e07b687bc
+@mytime res_reg = Optim.optimize(loss_with_reg, gradient_with_reg!, initial_guess, LBFGS(), Optim.Options(iterations=30))
+
+# ╔═╡ dc194c82-483e-49c8-97c5-8eb9f14c0784
+[simshow(res.minimizer) simshow(ones((512, 10))) simshow(res_reg.minimizer)]
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1502,5 +1531,11 @@ version = "17.4.0+2"
 # ╠═8497d788-21cf-40de-9b24-71ff0cdfc1ed
 # ╠═ef2206bf-3e18-4152-80c2-455228785d2f
 # ╠═9c95e2f6-4201-4754-a363-510203d6e3bb
+# ╟─8305c596-c3e7-445c-8465-81deb8c8d661
+# ╠═9136ca18-c72d-4afd-ba7d-770f28c6a612
+# ╠═113007e5-c7e3-4267-8b64-faa72aab0ed7
+# ╠═45a3021f-6d72-418f-a076-e51ab798380e
+# ╠═c62d11b2-7a07-4598-ac76-ab6e07b687bc
+# ╠═dc194c82-483e-49c8-97c5-8eb9f14c0784
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
